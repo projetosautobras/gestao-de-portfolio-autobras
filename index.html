@@ -1,0 +1,2536 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestão de Portfólio — Autobras</title>
+<link rel="preconnect" href="https://fonts.googleapis.com/">
+<link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.29.0/dist/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{
+  /* Autobras brand */
+  --brand-navy:#1B3560;
+  --brand-teal:#00B2C5;
+  --brand-teal-dark:#0096A8;
+  --brand-teal-light:#e0f7fa;
+
+  /* Surfaces */
+  --bg-primary:#ffffff;
+  --bg-secondary:#f2f5f9;
+  --bg-tertiary:#e8edf4;
+
+  /* Text */
+  --text-primary:#1B3560;
+  --text-secondary:#4a6080;
+  --text-tertiary:#8a9bb5;
+
+  /* Borders */
+  --border:#d0dae8;
+  --border-strong:rgba(27,53,96,0.20);
+
+  /* Radius */
+  --radius-md:8px; --radius-lg:12px;
+
+  /* Status */
+  --green-bg:#e3f5e1; --green-text:#1a5e1a; --green-dot:#2e7d2e;
+  --amber-bg:#fff4e0; --amber-text:#7a4800; --amber-dot:#e08000;
+  --red-bg:#fde8e8;   --red-text:#7a1a1a;   --red-dot:#c0392b;
+  --gray-bg:#edf1f7;  --gray-text:#4a6080;  --gray-dot:#8a9bb5;
+
+  --font-sans:'Raleway',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --font-mono:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg-primary:#111827; --bg-secondary:#1a2640; --bg-tertiary:#1e2d4a;
+    --text-primary:#e8edf8; --text-secondary:#a8bbd4; --text-tertiary:#6a85a8;
+    --border:rgba(255,255,255,0.10); --border-strong:rgba(255,255,255,0.20);
+    --brand-teal:#00CDE0; --brand-teal-light:#0d2535;
+    --green-bg:#0d2e0d; --green-text:#80d880; --green-dot:#4caf50;
+    --amber-bg:#2d1e00; --amber-text:#ffc166; --amber-dot:#ff9800;
+    --red-bg:#2d0a0a;   --red-text:#f48c8c;   --red-dot:#e53935;
+    --gray-bg:#1e2d4a;  --gray-text:#a8bbd4;  --gray-dot:#6a85a8;
+  }
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{ font-family:var(--font-sans); background:var(--bg-tertiary); color:var(--text-primary); font-size:14px; line-height:1.6; }
+/* ── topbar brand ─────────────────────────────────────────── */
+.topbar{
+  background:var(--brand-navy);
+  padding:0 2rem;
+  display:flex; align-items:center; justify-content:space-between;
+  height:56px; position:sticky; top:0; z-index:100;
+  box-shadow:0 2px 12px rgba(27,53,96,.25);
+}
+.topbar-logo{ display:flex; align-items:center; gap:10px; text-decoration:none; }
+.topbar-logo svg{ width:32px; height:32px; flex-shrink:0; }
+.topbar-logo-text{ display:flex; flex-direction:column; line-height:1.1; }
+.topbar-logo-text .name{ font-size:17px; font-weight:700; letter-spacing:.5px;
+  color:var(--brand-teal); }
+.topbar-logo-text .name span{ color:#ffffff; }
+.topbar-logo-text .tagline{ font-size:9px; font-weight:500; letter-spacing:1.2px;
+  text-transform:uppercase; color:rgba(255,255,255,.55); }
+.topbar-right{ font-size:11px; color:rgba(255,255,255,.45); }
+
+#shell{ max-width:1120px; margin:0 auto; padding:1.5rem 1.5rem 5rem; }
+.page-header{ display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:1.25rem; }
+.page-header h1{ font-size:20px; font-weight:600; }
+.page-header .sub{ font-size:12px; color:var(--text-tertiary); margin-top:2px; }
+h2{ font-size:16px; font-weight:600; color:var(--text-primary); }
+/* inputs */
+input[type="text"],input:not([type]),input[type="date"],input[type="number"],select,textarea{
+  font-family:var(--font-sans); font-size:14px; color:var(--text-primary);
+  background:var(--bg-primary); border:1px solid var(--border);
+  border-radius:var(--radius-md); padding:0 10px; height:36px;
+  width:100%; transition:border-color .15s;
+}
+textarea{ height:auto; padding:8px 10px; resize:vertical; }
+input:focus,select:focus,textarea:focus{
+  outline:none; border-color:var(--brand-teal); box-shadow:0 0 0 3px rgba(0,178,197,.15);
+}
+input[readonly]{ background:var(--bg-secondary); color:var(--text-secondary); cursor:default; }
+button{
+  font-family:var(--font-sans); font-size:13px; color:var(--text-primary);
+  background:var(--bg-primary); border:1px solid var(--border);
+  border-radius:var(--radius-md); padding:0 14px; height:34px; cursor:pointer;
+  display:inline-flex; align-items:center; gap:6px; white-space:nowrap;
+}
+button:hover{ background:var(--bg-secondary); }
+button:active{ transform:scale(.98); }
+button.primary{ background:var(--brand-teal); border-color:var(--brand-teal-dark); color:#fff; }
+button.primary:hover{ background:var(--brand-teal-dark); }
+/* metric cards */
+.metrics{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:1.5rem; }
+.metric{
+  background:var(--bg-primary); border:1px solid var(--border);
+  border-top:3px solid var(--brand-teal);
+  border-radius:var(--radius-md); padding:14px 16px;
+}
+.metric .label{ font-size:12px; color:var(--text-secondary); font-weight:500; letter-spacing:.3px; }
+.metric .value{ font-size:28px; font-weight:700; line-height:1.2; }
+/* table */
+.tbl-wrap{ background:var(--bg-primary); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; border-top:2px solid var(--brand-teal); }
+table{ width:100%; border-collapse:collapse; font-size:13px; }
+thead th{ text-align:left; padding:9px 12px; font-weight:600; color:var(--text-secondary); background:var(--bg-secondary); border-bottom:1px solid var(--border); letter-spacing:.2px; font-size:12px; text-transform:uppercase; }
+tbody td{ padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:middle; }
+tbody tr:last-child td{ border-bottom:none; }
+tbody tr.clickable:hover{ background:var(--bg-secondary); cursor:pointer; }
+/* farol badge */
+.badge{ display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:500; white-space:nowrap; }
+.badge .dot{ width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+/* drag */
+tr.drag-over td{ background:var(--brand-teal-light) !important; outline:2px solid var(--brand-teal); outline-offset:-2px; }
+tr.dragging{ opacity:.4; }
+/* section card */
+.card{ background:var(--bg-primary); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; }
+.card-header{ padding:10px 14px; background:var(--bg-secondary); border-bottom:1px solid var(--border); font-size:12px; color:var(--text-secondary); display:grid; align-items:center; }
+/* phase rows */
+.phase-row{ display:grid; align-items:center; gap:10px; padding:8px 14px; border-bottom:1px solid var(--border); font-size:13px; }
+.phase-row:last-child{ border-bottom:none; }
+.phase-dot{ width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+/* comment log */
+.comment-list{ display:flex; flex-direction:column; gap:0; }
+.comment-item{ padding:10px 14px; border-bottom:1px solid var(--border); display:flex; gap:12px; align-items:flex-start; }
+.comment-item:last-child{ border-bottom:none; }
+.comment-date{ font-size:11px; color:var(--text-tertiary); white-space:nowrap; margin-top:2px; min-width:80px; }
+.comment-text{ font-size:13px; color:var(--text-primary); line-height:1.5; }
+.comment-input-wrap{ padding:10px 14px; border-top:1px solid var(--border); background:var(--bg-secondary); display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.comment-tag{ display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid transparent; transition:opacity .15s; }
+.comment-tag-info     { background:#edf1f7; color:#4a6080; border-color:#d0dae8; }
+.comment-tag-pending  { background:var(--amber-bg); color:var(--amber-text); border-color:var(--amber-dot); }
+.comment-tag-resolved { background:var(--green-bg); color:var(--green-text); border-color:var(--green-dot); }
+.comment-filter-bar{ padding:8px 14px; background:var(--bg-secondary); border-bottom:1px solid var(--border); display:flex; gap:8px; align-items:center; }
+.comment-input-wrap input{ flex:1; }
+/* form grid */
+.form-grid{ display:grid; gap:12px; }
+.form-grid label{ font-size:12px; color:var(--text-secondary); display:block; margin-bottom:4px; }
+/* check button */
+.phase-check{
+  width:24px; height:24px; border-radius:50%; border:2px solid var(--border-strong);
+  background:transparent; padding:0; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; flex-shrink:0; transition:background .15s, border-color .15s;
+}
+.phase-check.done{ background:var(--brand-teal); border-color:var(--brand-teal-dark); color:#fff; }
+.phase-check:hover:not(.done){ border-color:#378ADD; }
+/* nav tabs */
+.nav-tabs{ display:flex; gap:6px; margin-bottom:1.75rem; border-bottom:2px solid var(--border); padding-bottom:0; }
+.nav-tab{
+  font-size:13px; font-weight:600; padding:9px 18px; border-radius:var(--radius-md) var(--radius-md) 0 0;
+  border:1px solid transparent; border-bottom:none; cursor:pointer; background:transparent;
+  color:var(--text-secondary); height:auto; margin-bottom:-2px; position:relative; letter-spacing:.2px;
+  transition:color .15s, background .15s;
+}
+.nav-tab:hover{ background:var(--bg-secondary); color:var(--brand-navy); }
+.nav-tab.active{
+  background:var(--bg-primary); border-color:var(--border); border-bottom:2px solid var(--brand-teal);
+  color:var(--brand-navy); margin-bottom:-2px;
+}
+/* colab card */
+.colab-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:14px; }
+.colab-card{
+  background:var(--bg-primary); border:1px solid var(--border); border-radius:var(--radius-lg);
+  overflow:hidden; transition:box-shadow .15s;
+}
+.colab-card:hover{ box-shadow:0 2px 12px rgba(0,0,0,.08); }
+.colab-card-header{
+  padding:14px 16px 10px; display:flex; align-items:flex-start; justify-content:space-between; gap:8px;
+}
+.colab-avatar{
+  width:38px; height:38px; border-radius:50%; background:var(--bg-tertiary);
+  display:flex; align-items:center; justify-content:center; font-size:15px;
+  font-weight:600; color:var(--text-secondary); flex-shrink:0;
+}
+.colab-body{ padding:0 16px 14px; display:flex; flex-direction:column; gap:8px; }
+.colab-field label{ font-size:11px; color:var(--text-tertiary); display:block; margin-bottom:2px; }
+.vacation-soon{ background:var(--amber-bg); color:var(--amber-text); }
+.vacation-ok{   background:var(--green-bg);  color:var(--green-text); }
+.vacation-none{ background:var(--gray-bg);   color:var(--gray-text);  }
+/* import panel */
+.import-panel{
+  background:var(--bg-primary); border:1px solid var(--border);
+  border-top:3px solid var(--brand-teal); border-radius:var(--radius-lg);
+  padding:20px; margin-bottom:1.25rem;
+}
+.import-panel h3{ font-size:15px; font-weight:600; color:var(--brand-navy); margin-bottom:4px; }
+.import-panel p{ font-size:12px; color:var(--text-secondary); margin-bottom:14px; }
+.col-map-grid{ display:grid; grid-template-columns:1fr 28px 1fr; gap:6px; align-items:center; margin-bottom:8px; }
+.col-map-label{ font-size:12px; color:var(--text-secondary); text-align:right; padding-right:4px; }
+.col-map-arrow{ font-size:16px; color:var(--brand-teal); text-align:center; }
+.import-preview{ max-height:220px; overflow-y:auto; margin-top:12px; border:1px solid var(--border); border-radius:var(--radius-md); }
+.import-preview table{ font-size:11px; width:100%; border-collapse:collapse; }
+.import-preview th{ background:var(--bg-secondary); padding:5px 8px; text-align:left; font-weight:600; color:var(--text-secondary); position:sticky; top:0; border-bottom:1px solid var(--border); }
+.import-preview td{ padding:4px 8px; border-bottom:1px solid var(--border); color:var(--text-primary); }
+.import-preview tr:last-child td{ border-bottom:none; }
+</style>
+</head>
+<body>
+<!-- topbar fixo com logo Autobras -->
+<header class="topbar">
+  <div class="topbar-logo">
+    <div class="topbar-logo-text">
+      <span class="name"><span>Auto</span>bras</span>
+      <span class="tagline">Controle e Segurança Predial</span>
+    </div>
+  </div>
+  <span class="topbar-right">Sistema de Gestão Operacional</span>
+</header>
+
+<div id="shell">
+  <nav class="nav-tabs" style="margin-top:0.5rem;">
+    <button class="nav-tab" id="tab-portfolio" onclick="goTab(&#39;portfolio&#39;)">
+      <i class="ti ti-layout-dashboard" style="font-size:14px;vertical-align:-2px;margin-right:5px;"></i>Portfólio de projetos
+    </button>
+    <button class="nav-tab" id="tab-colaboradores" onclick="goTab(&#39;colaboradores&#39;)">
+      <i class="ti ti-users" style="font-size:14px;vertical-align:-2px;margin-right:5px;"></i>Colaboradores Autobras
+    </button>
+    <button class="nav-tab" id="tab-empreiteiros" onclick="goTab(&#39;empreiteiros&#39;)">
+      <i class="ti ti-building-factory-2" style="font-size:14px;vertical-align:-2px;margin-right:5px;"></i>Empreiteiros
+    </button>
+    <button class="nav-tab active" id="tab-visao-colab" onclick="goTab(&#39;visao-colab&#39;)">
+      <i class="ti ti-layout-list" style="font-size:14px;vertical-align:-2px;margin-right:5px;"></i>Visão por Projeto
+    </button>
+  </nav>
+  <div id="app"><div class="metrics" style="grid-template-columns:repeat(4,1fr);margin-bottom:1.5rem;"><div class="metric"><div class="label">Projetos ativos</div>
+    <div class="value">15</div></div><div class="metric"><div class="label">Com equipe definida</div>
+    <div class="value">15</div></div><div class="metric"><div class="label">Sem equipe</div>
+    <div class="value">0</div></div><div class="metric"><div class="label">Colaboradores alocados</div>
+    <div class="value" style="color:var(--brand-teal)">32</div></div></div><p style="font-size:12px;color:var(--text-tertiary);margin-bottom:1rem;">
+    Inclui alocações formais + papel de coordenador. Clique num projeto para abrir seus detalhes.
+  </p><div style="display:flex;flex-direction:column;gap:10px;"><div class="card" style="border-top:3px solid var(--brand-teal);"><div style="display: flex; align-items: center; gap: 14px; padding: 12px 16px; cursor: pointer; border-bottom: 1px solid var(--border); background: transparent;" onclick="goTab(&#39;portfolio&#39;);state.view=&#39;detail&#39;;state.currentId=&#39;p_0uuzsvgl&#39;;render()" onmouseover="this.style.background=&#39;var(--bg-secondary)&#39;" onmouseout="this.style.background=&#39;transparent&#39;"><div style="width:42px;height:42px;border-radius:50%;background:var(--brand-teal-light);
+         display:flex;align-items:center;justify-content:center;flex-shrink:0;flex-direction:column;gap:0;">
+      <span style="font-size:16px;font-weight:700;color:var(--brand-navy);line-height:1;">5</span>
+      <span style="font-size:9px;color:var(--text-tertiary);line-height:1;">pessoas</span>
+    </div><div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+        <span style="font-weight:700;font-size:15px;color:var(--brand-navy);">Rede D'Or Taubaté</span>
+        <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-tertiary);">EXE159</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:3px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--text-secondary);">Engenharia / Projeto</span>
+        <span style="font-size:11px;color:var(--text-tertiary);">Entrega: 30 de jul. de 2027</span>
+      </div>
+    </div><span class="badge" style="background:var(--red-bg);color:var(--red-text);flex-shrink:0;">
+      <span class="dot" style="background:var(--red-dot);"></span>Atrasado
+    </span><i class="ti ti-chevron-right" style="color:var(--text-tertiary);flex-shrink:0;"></i></div><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><colgroup>
+        <col style="width:24px"><col style="width:22%"><col style="width:18%"><col style="width:20%"><col style="width:14%"><col style="width:14%">
+      </colgroup>
+      <thead><tr style="background:var(--bg-secondary);">
+        <th style="padding:6px 10px;"></th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Nome</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Cargo</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Função no projeto</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Início</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Fim previsto</th>
+      </tr></thead><tbody><tr style="border-bottom:1px solid var(--border);background:var(--brand-teal-light);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-star-filled" style="font-size:12px;color:var(--brand-teal);" title="Coordenador"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:600;color:var(--brand-navy);"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--brand-teal);margin-right:5px;" title="Coordenador"></span>Diogo Oliveira</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Coordenador de Projetos</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">Coordenador</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr><tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">José Oliveira</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr><tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">Roberson Oliveira</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr><tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">Emerson Schwatz</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico Junior 3</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr><tr style="">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">Técnico Taubaté</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr></tbody></table></div></div><div class="card" style="border-top:3px solid var(--brand-teal);"><div style="display: flex; align-items: center; gap: 14px; padding: 12px 16px; cursor: pointer; border-bottom: 1px solid var(--border); background: transparent;" onclick="goTab(&#39;portfolio&#39;);state.view=&#39;detail&#39;;state.currentId=&#39;p_8ot1xhoy&#39;;render()" onmouseover="this.style.background=&#39;var(--bg-secondary)&#39;" onmouseout="this.style.background=&#39;transparent&#39;"><div style="width:42px;height:42px;border-radius:50%;background:var(--brand-teal-light);
+         display:flex;align-items:center;justify-content:center;flex-shrink:0;flex-direction:column;gap:0;">
+      <span style="font-size:16px;font-weight:700;color:var(--brand-navy);line-height:1;">3</span>
+      <span style="font-size:9px;color:var(--text-tertiary);line-height:1;">pessoas</span>
+    </div><div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+        <span style="font-weight:700;font-size:15px;color:var(--brand-navy);">Microsoft</span>
+        <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-tertiary);">EXE002</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:3px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--text-secondary);">Contrato assinado</span>
+        <span style="font-size:11px;color:var(--text-tertiary);">Entrega: 30 de jul. de 2026</span>
+      </div>
+    </div><span class="badge" style="background:var(--gray-bg);color:var(--gray-text);flex-shrink:0;">
+      <span class="dot" style="background:var(--gray-dot);"></span>Sem dados
+    </span><i class="ti ti-chevron-right" style="color:var(--text-tertiary);flex-shrink:0;"></i></div><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><colgroup>
+        <col style="width:24px"><col style="width:22%"><col style="width:18%"><col style="width:20%"><col style="width:14%"><col style="width:14%">
+      </colgroup>
+      <thead><tr style="background:var(--bg-secondary);">
+        <th style="padding:6px 10px;"></th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Nome</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Cargo</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Função no projeto</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Início</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Fim previsto</th>
+      </tr></thead><tbody><tr style="border-bottom:1px solid var(--border);background:var(--brand-teal-light);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-star-filled" style="font-size:12px;color:var(--brand-teal);" title="Coordenador"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:600;color:var(--brand-navy);"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--brand-teal);margin-right:5px;" title="Coordenador"></span>Diogo Oliveira</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Coordenador de Projetos</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">Coordenador</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr><tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">Jucyel Leal</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr><tr style="">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">Johnny Souza</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr></tbody></table></div></div><div class="card" style="border-top:3px solid var(--brand-teal);"><div style="display:flex;align-items:center;gap:14px;padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="goTab(&#39;portfolio&#39;);state.view=&#39;detail&#39;;state.currentId=&#39;p_rfqy53me&#39;;render()" onmouseover="this.style.background=&#39;var(--bg-secondary)&#39;" onmouseout="this.style.background=&#39;transparent&#39;"><div style="width:42px;height:42px;border-radius:50%;background:var(--brand-teal-light);
+         display:flex;align-items:center;justify-content:center;flex-shrink:0;flex-direction:column;gap:0;">
+      <span style="font-size:16px;font-weight:700;color:var(--brand-navy);line-height:1;">1</span>
+      <span style="font-size:9px;color:var(--text-tertiary);line-height:1;">pessoa</span>
+    </div><div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+        <span style="font-weight:700;font-size:15px;color:var(--brand-navy);">Prevent</span>
+        <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-tertiary);">EXE004</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:3px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--text-secondary);">Contrato assinado</span>
+        <span style="font-size:11px;color:var(--text-tertiary);">Entrega: 01 de mai. de 2026</span>
+      </div>
+    </div><span class="badge" style="background:var(--gray-bg);color:var(--gray-text);flex-shrink:0;">
+      <span class="dot" style="background:var(--gray-dot);"></span>Sem dados
+    </span><i class="ti ti-chevron-right" style="color:var(--text-tertiary);flex-shrink:0;"></i></div><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><colgroup>
+        <col style="width:24px"><col style="width:22%"><col style="width:18%"><col style="width:20%"><col style="width:14%"><col style="width:14%">
+      </colgroup>
+      <thead><tr style="background:var(--bg-secondary);">
+        <th style="padding:6px 10px;"></th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Nome</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Cargo</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Função no projeto</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Início</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Fim previsto</th>
+      </tr></thead><tbody><tr style="background:var(--brand-teal-light);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-star-filled" style="font-size:12px;color:var(--brand-teal);" title="Coordenador"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:600;color:var(--brand-navy);"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--brand-teal);margin-right:5px;" title="Coordenador"></span>Rafael Santos</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Supervisor de Projetos</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">Coordenador</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr></tbody></table></div></div><div class="card" style="border-top:3px solid var(--brand-teal);"><div style="display:flex;align-items:center;gap:14px;padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="goTab(&#39;portfolio&#39;);state.view=&#39;detail&#39;;state.currentId=&#39;p_t0zvpnwu&#39;;render()" onmouseover="this.style.background=&#39;var(--bg-secondary)&#39;" onmouseout="this.style.background=&#39;transparent&#39;"><div style="width:42px;height:42px;border-radius:50%;background:var(--brand-teal-light);
+         display:flex;align-items:center;justify-content:center;flex-shrink:0;flex-direction:column;gap:0;">
+      <span style="font-size:16px;font-weight:700;color:var(--brand-navy);line-height:1;">6</span>
+      <span style="font-size:9px;color:var(--text-tertiary);line-height:1;">pessoas</span>
+    </div><div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+        <span style="font-weight:700;font-size:15px;color:var(--brand-navy);">GE</span>
+        <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-tertiary);">EXE005</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:3px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--text-secondary);">Contrato assinado</span>
+        
+      </div>
+    </div><span class="badge" style="background:var(--gray-bg);color:var(--gray-text);flex-shrink:0;">
+      <span class="dot" style="background:var(--gray-dot);"></span>Sem dados
+    </span><i class="ti ti-chevron-right" style="color:var(--text-tertiary);flex-shrink:0;"></i></div><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><colgroup>
+        <col style="width:24px"><col style="width:22%"><col style="width:18%"><col style="width:20%"><col style="width:14%"><col style="width:14%">
+      </colgroup>
+      <thead><tr style="background:var(--bg-secondary);">
+        <th style="padding:6px 10px;"></th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Nome</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Cargo</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Função no projeto</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Início</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Fim previsto</th>
+      </tr></thead><tbody><tr style="border-bottom:1px solid var(--border);background:var(--brand-teal-light);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-star-filled" style="font-size:12px;color:var(--brand-teal);" title="Coordenador"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:600;color:var(--brand-navy);"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--brand-teal);margin-right:5px;" title="Coordenador"></span>Emerson Silva</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Coordenador de Projetos</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">Coordenador</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr><tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">Paulo Cesar</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr><tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">Erick Batagini</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr><tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">Marcus Santana</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr><tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">Gabriel Alves</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico Pleno 1</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr><tr style="">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">Técnico GE</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr></tbody></table></div></div><div class="card" style="border-top:3px solid var(--brand-teal);"><div style="display:flex;align-items:center;gap:14px;padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="goTab(&#39;portfolio&#39;);state.view=&#39;detail&#39;;state.currentId=&#39;p_36mpa2sn&#39;;render()" onmouseover="this.style.background=&#39;var(--bg-secondary)&#39;" onmouseout="this.style.background=&#39;transparent&#39;"><div style="width:42px;height:42px;border-radius:50%;background:var(--brand-teal-light);
+         display:flex;align-items:center;justify-content:center;flex-shrink:0;flex-direction:column;gap:0;">
+      <span style="font-size:16px;font-weight:700;color:var(--brand-navy);line-height:1;">4</span>
+      <span style="font-size:9px;color:var(--text-tertiary);line-height:1;">pessoas</span>
+    </div><div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+        <span style="font-weight:700;font-size:15px;color:var(--brand-navy);">Mercado Cuiabá</span>
+        <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-tertiary);">EXE007</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:3px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--text-secondary);">Contrato assinado</span>
+        <span style="font-size:11px;color:var(--text-tertiary);">Entrega: 01 de abr. de 2026</span>
+      </div>
+    </div><span class="badge" style="background:var(--gray-bg);color:var(--gray-text);flex-shrink:0;">
+      <span class="dot" style="background:var(--gray-dot);"></span>Sem dados
+    </span><i class="ti ti-chevron-right" style="color:var(--text-tertiary);flex-shrink:0;"></i></div><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><colgroup>
+        <col style="width:24px"><col style="width:22%"><col style="width:18%"><col style="width:20%"><col style="width:14%"><col style="width:14%">
+      </colgroup>
+      <thead><tr style="background:var(--bg-secondary);">
+        <th style="padding:6px 10px;"></th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Nome</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Cargo</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Função no projeto</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Início</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Fim previsto</th>
+      </tr></thead><tbody><tr style="border-bottom:1px solid var(--border);background:var(--brand-teal-light);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-star-filled" style="font-size:12px;color:var(--brand-teal);" title="Coordenador"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:600;color:var(--brand-navy);"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--brand-teal);margin-right:5px;" title="Coordenador"></span>Diego Santos</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Gerente de Projetos</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">Coordenador</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr><tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">Gabriel Rezende</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr><tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">Matheus Estevam</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr><tr style="">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">Aparecido Junior</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr></tbody></table></div></div><div class="card" style="border-top:3px solid var(--brand-teal);"><div style="display:flex;align-items:center;gap:14px;padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="goTab(&#39;portfolio&#39;);state.view=&#39;detail&#39;;state.currentId=&#39;p_j1ak6laj&#39;;render()" onmouseover="this.style.background=&#39;var(--bg-secondary)&#39;" onmouseout="this.style.background=&#39;transparent&#39;"><div style="width:42px;height:42px;border-radius:50%;background:var(--brand-teal-light);
+         display:flex;align-items:center;justify-content:center;flex-shrink:0;flex-direction:column;gap:0;">
+      <span style="font-size:16px;font-weight:700;color:var(--brand-navy);line-height:1;">1</span>
+      <span style="font-size:9px;color:var(--text-tertiary);line-height:1;">pessoa</span>
+    </div><div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+        <span style="font-weight:700;font-size:15px;color:var(--brand-navy);">Alemoa Petrobras</span>
+        <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-tertiary);">EXE008</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:3px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--text-secondary);">Contrato assinado</span>
+        <span style="font-size:11px;color:var(--text-tertiary);">Entrega: 01 de mar. de 2026</span>
+      </div>
+    </div><span class="badge" style="background:var(--gray-bg);color:var(--gray-text);flex-shrink:0;">
+      <span class="dot" style="background:var(--gray-dot);"></span>Sem dados
+    </span><i class="ti ti-chevron-right" style="color:var(--text-tertiary);flex-shrink:0;"></i></div><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><colgroup>
+        <col style="width:24px"><col style="width:22%"><col style="width:18%"><col style="width:20%"><col style="width:14%"><col style="width:14%">
+      </colgroup>
+      <thead><tr style="background:var(--bg-secondary);">
+        <th style="padding:6px 10px;"></th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Nome</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Cargo</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Função no projeto</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Início</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Fim previsto</th>
+      </tr></thead><tbody><tr style="background:var(--brand-teal-light);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-star-filled" style="font-size:12px;color:var(--brand-teal);" title="Coordenador"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:600;color:var(--brand-navy);"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--brand-teal);margin-right:5px;" title="Coordenador"></span>Hugo Sena</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Supervisor de Projetos</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">Coordenador</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr></tbody></table></div></div><div class="card" style="border-top:3px solid var(--brand-teal);"><div style="display:flex;align-items:center;gap:14px;padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="goTab(&#39;portfolio&#39;);state.view=&#39;detail&#39;;state.currentId=&#39;p_etupyzeq&#39;;render()" onmouseover="this.style.background=&#39;var(--bg-secondary)&#39;" onmouseout="this.style.background=&#39;transparent&#39;"><div style="width:42px;height:42px;border-radius:50%;background:var(--brand-teal-light);
+         display:flex;align-items:center;justify-content:center;flex-shrink:0;flex-direction:column;gap:0;">
+      <span style="font-size:16px;font-weight:700;color:var(--brand-navy);line-height:1;">5</span>
+      <span style="font-size:9px;color:var(--text-tertiary);line-height:1;">pessoas</span>
+    </div><div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+        <span style="font-weight:700;font-size:15px;color:var(--brand-navy);">FourC</span>
+        <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-tertiary);">EXE006</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:3px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--text-secondary);">Contrato assinado</span>
+        <span style="font-size:11px;color:var(--text-tertiary);">Entrega: 01 de ago. de 2026</span>
+      </div>
+    </div><span class="badge" style="background:var(--gray-bg);color:var(--gray-text);flex-shrink:0;">
+      <span class="dot" style="background:var(--gray-dot);"></span>Sem dados
+    </span><i class="ti ti-chevron-right" style="color:var(--text-tertiary);flex-shrink:0;"></i></div><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><colgroup>
+        <col style="width:24px"><col style="width:22%"><col style="width:18%"><col style="width:20%"><col style="width:14%"><col style="width:14%">
+      </colgroup>
+      <thead><tr style="background:var(--bg-secondary);">
+        <th style="padding:6px 10px;"></th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Nome</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Cargo</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Função no projeto</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Início</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Fim previsto</th>
+      </tr></thead><tbody><tr style="border-bottom:1px solid var(--border);background:var(--brand-teal-light);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-star-filled" style="font-size:12px;color:var(--brand-teal);" title="Coordenador"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:600;color:var(--brand-navy);"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--brand-teal);margin-right:5px;" title="Coordenador"></span>William Araújo</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Supervisor de Projetos</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">Coordenador</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr><tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">David Evander</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr><tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">Mateus Augusto</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr><tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">Emerson Araujo</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr><tr style="">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">Alan Teles</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr></tbody></table></div></div><div class="card" style="border-top:3px solid var(--brand-teal);"><div style="display:flex;align-items:center;gap:14px;padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="goTab(&#39;portfolio&#39;);state.view=&#39;detail&#39;;state.currentId=&#39;p_248gjy3g&#39;;render()" onmouseover="this.style.background=&#39;var(--bg-secondary)&#39;" onmouseout="this.style.background=&#39;transparent&#39;"><div style="width:42px;height:42px;border-radius:50%;background:var(--brand-teal-light);
+         display:flex;align-items:center;justify-content:center;flex-shrink:0;flex-direction:column;gap:0;">
+      <span style="font-size:16px;font-weight:700;color:var(--brand-navy);line-height:1;">4</span>
+      <span style="font-size:9px;color:var(--text-tertiary);line-height:1;">pessoas</span>
+    </div><div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+        <span style="font-weight:700;font-size:15px;color:var(--brand-navy);">HB50</span>
+        <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-tertiary);">EXE012</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:3px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--text-secondary);">Contrato assinado</span>
+        
+      </div>
+    </div><span class="badge" style="background:var(--gray-bg);color:var(--gray-text);flex-shrink:0;">
+      <span class="dot" style="background:var(--gray-dot);"></span>Sem dados
+    </span><i class="ti ti-chevron-right" style="color:var(--text-tertiary);flex-shrink:0;"></i></div><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><colgroup>
+        <col style="width:24px"><col style="width:22%"><col style="width:18%"><col style="width:20%"><col style="width:14%"><col style="width:14%">
+      </colgroup>
+      <thead><tr style="background:var(--bg-secondary);">
+        <th style="padding:6px 10px;"></th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Nome</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Cargo</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Função no projeto</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Início</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Fim previsto</th>
+      </tr></thead><tbody><tr style="border-bottom:1px solid var(--border);background:var(--brand-teal-light);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-star-filled" style="font-size:12px;color:var(--brand-teal);" title="Coordenador"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:600;color:var(--brand-navy);"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--brand-teal);margin-right:5px;" title="Coordenador"></span>Diogo Oliveira</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Coordenador de Projetos</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">Coordenador</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr><tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">Michael Silva</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr><tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">Elias Moises</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr><tr style="">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">Fabio Freitas</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr></tbody></table></div></div><div class="card" style="border-top:3px solid var(--brand-teal);"><div style="display:flex;align-items:center;gap:14px;padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="goTab(&#39;portfolio&#39;);state.view=&#39;detail&#39;;state.currentId=&#39;p_71scfjm3&#39;;render()" onmouseover="this.style.background=&#39;var(--bg-secondary)&#39;" onmouseout="this.style.background=&#39;transparent&#39;"><div style="width:42px;height:42px;border-radius:50%;background:var(--brand-teal-light);
+         display:flex;align-items:center;justify-content:center;flex-shrink:0;flex-direction:column;gap:0;">
+      <span style="font-size:16px;font-weight:700;color:var(--brand-navy);line-height:1;">3</span>
+      <span style="font-size:9px;color:var(--text-tertiary);line-height:1;">pessoas</span>
+    </div><div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+        <span style="font-weight:700;font-size:15px;color:var(--brand-navy);">Joaquim Floriano</span>
+        <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-tertiary);">EXE010</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:3px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--text-secondary);">Contrato assinado</span>
+        <span style="font-size:11px;color:var(--text-tertiary);">Entrega: 01 de mar. de 2026</span>
+      </div>
+    </div><span class="badge" style="background:var(--gray-bg);color:var(--gray-text);flex-shrink:0;">
+      <span class="dot" style="background:var(--gray-dot);"></span>Sem dados
+    </span><i class="ti ti-chevron-right" style="color:var(--text-tertiary);flex-shrink:0;"></i></div><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><colgroup>
+        <col style="width:24px"><col style="width:22%"><col style="width:18%"><col style="width:20%"><col style="width:14%"><col style="width:14%">
+      </colgroup>
+      <thead><tr style="background:var(--bg-secondary);">
+        <th style="padding:6px 10px;"></th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Nome</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Cargo</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Função no projeto</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Início</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Fim previsto</th>
+      </tr></thead><tbody><tr style="border-bottom:1px solid var(--border);background:var(--brand-teal-light);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-star-filled" style="font-size:12px;color:var(--brand-teal);" title="Coordenador"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:600;color:var(--brand-navy);"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--brand-teal);margin-right:5px;" title="Coordenador"></span>William Araújo</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Supervisor de Projetos</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">Coordenador</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr><tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">Bruno Granja</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr><tr style="">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">Franklin Souza</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr></tbody></table></div></div><div class="card" style="border-top:3px solid var(--brand-teal);"><div style="display:flex;align-items:center;gap:14px;padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="goTab(&#39;portfolio&#39;);state.view=&#39;detail&#39;;state.currentId=&#39;p_wvjikks9&#39;;render()" onmouseover="this.style.background=&#39;var(--bg-secondary)&#39;" onmouseout="this.style.background=&#39;transparent&#39;"><div style="width:42px;height:42px;border-radius:50%;background:var(--brand-teal-light);
+         display:flex;align-items:center;justify-content:center;flex-shrink:0;flex-direction:column;gap:0;">
+      <span style="font-size:16px;font-weight:700;color:var(--brand-navy);line-height:1;">1</span>
+      <span style="font-size:9px;color:var(--text-tertiary);line-height:1;">pessoa</span>
+    </div><div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+        <span style="font-weight:700;font-size:15px;color:var(--brand-navy);">3Z Itacema</span>
+        <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-tertiary);">EXE011</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:3px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--text-secondary);">Contrato assinado</span>
+        
+      </div>
+    </div><span class="badge" style="background:var(--gray-bg);color:var(--gray-text);flex-shrink:0;">
+      <span class="dot" style="background:var(--gray-dot);"></span>Sem dados
+    </span><i class="ti ti-chevron-right" style="color:var(--text-tertiary);flex-shrink:0;"></i></div><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><colgroup>
+        <col style="width:24px"><col style="width:22%"><col style="width:18%"><col style="width:20%"><col style="width:14%"><col style="width:14%">
+      </colgroup>
+      <thead><tr style="background:var(--bg-secondary);">
+        <th style="padding:6px 10px;"></th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Nome</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Cargo</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Função no projeto</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Início</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Fim previsto</th>
+      </tr></thead><tbody><tr style="background:var(--brand-teal-light);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-star-filled" style="font-size:12px;color:var(--brand-teal);" title="Coordenador"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:600;color:var(--brand-navy);"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--brand-teal);margin-right:5px;" title="Coordenador"></span>William Araújo</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Supervisor de Projetos</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">Coordenador</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr></tbody></table></div></div><div class="card" style="border-top:3px solid var(--brand-teal);"><div style="display:flex;align-items:center;gap:14px;padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="goTab(&#39;portfolio&#39;);state.view=&#39;detail&#39;;state.currentId=&#39;p_9nld7puu&#39;;render()" onmouseover="this.style.background=&#39;var(--bg-secondary)&#39;" onmouseout="this.style.background=&#39;transparent&#39;"><div style="width:42px;height:42px;border-radius:50%;background:var(--brand-teal-light);
+         display:flex;align-items:center;justify-content:center;flex-shrink:0;flex-direction:column;gap:0;">
+      <span style="font-size:16px;font-weight:700;color:var(--brand-navy);line-height:1;">1</span>
+      <span style="font-size:9px;color:var(--text-tertiary);line-height:1;">pessoa</span>
+    </div><div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+        <span style="font-weight:700;font-size:15px;color:var(--brand-navy);">Unimed Jundiaí</span>
+        <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-tertiary);">EXE013</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:3px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--text-secondary);">Contrato assinado</span>
+        
+      </div>
+    </div><span class="badge" style="background:var(--gray-bg);color:var(--gray-text);flex-shrink:0;">
+      <span class="dot" style="background:var(--gray-dot);"></span>Sem dados
+    </span><i class="ti ti-chevron-right" style="color:var(--text-tertiary);flex-shrink:0;"></i></div><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><colgroup>
+        <col style="width:24px"><col style="width:22%"><col style="width:18%"><col style="width:20%"><col style="width:14%"><col style="width:14%">
+      </colgroup>
+      <thead><tr style="background:var(--bg-secondary);">
+        <th style="padding:6px 10px;"></th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Nome</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Cargo</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Função no projeto</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Início</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Fim previsto</th>
+      </tr></thead><tbody><tr style="background:var(--brand-teal-light);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-star-filled" style="font-size:12px;color:var(--brand-teal);" title="Coordenador"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:600;color:var(--brand-navy);"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--brand-teal);margin-right:5px;" title="Coordenador"></span>Rafael Santos</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Supervisor de Projetos</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">Coordenador</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr></tbody></table></div></div><div class="card" style="border-top:3px solid var(--brand-teal);"><div style="display:flex;align-items:center;gap:14px;padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="goTab(&#39;portfolio&#39;);state.view=&#39;detail&#39;;state.currentId=&#39;p_qneo3d8o&#39;;render()" onmouseover="this.style.background=&#39;var(--bg-secondary)&#39;" onmouseout="this.style.background=&#39;transparent&#39;"><div style="width:42px;height:42px;border-radius:50%;background:var(--brand-teal-light);
+         display:flex;align-items:center;justify-content:center;flex-shrink:0;flex-direction:column;gap:0;">
+      <span style="font-size:16px;font-weight:700;color:var(--brand-navy);line-height:1;">1</span>
+      <span style="font-size:9px;color:var(--text-tertiary);line-height:1;">pessoa</span>
+    </div><div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+        <span style="font-weight:700;font-size:15px;color:var(--brand-navy);">Atlas Schindler</span>
+        <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-tertiary);">EXE163</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:3px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--text-secondary);">Contrato assinado</span>
+        
+      </div>
+    </div><span class="badge" style="background:var(--gray-bg);color:var(--gray-text);flex-shrink:0;">
+      <span class="dot" style="background:var(--gray-dot);"></span>Sem dados
+    </span><i class="ti ti-chevron-right" style="color:var(--text-tertiary);flex-shrink:0;"></i></div><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><colgroup>
+        <col style="width:24px"><col style="width:22%"><col style="width:18%"><col style="width:20%"><col style="width:14%"><col style="width:14%">
+      </colgroup>
+      <thead><tr style="background:var(--bg-secondary);">
+        <th style="padding:6px 10px;"></th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Nome</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Cargo</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Função no projeto</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Início</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Fim previsto</th>
+      </tr></thead><tbody><tr style="background:var(--brand-teal-light);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-star-filled" style="font-size:12px;color:var(--brand-teal);" title="Coordenador"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:600;color:var(--brand-navy);"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--brand-teal);margin-right:5px;" title="Coordenador"></span>Rafael Santos</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Supervisor de Projetos</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">Coordenador</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr></tbody></table></div></div><div class="card" style="border-top:3px solid var(--brand-teal);"><div style="display:flex;align-items:center;gap:14px;padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="goTab(&#39;portfolio&#39;);state.view=&#39;detail&#39;;state.currentId=&#39;p_qc3pj05l&#39;;render()" onmouseover="this.style.background=&#39;var(--bg-secondary)&#39;" onmouseout="this.style.background=&#39;transparent&#39;"><div style="width:42px;height:42px;border-radius:50%;background:var(--brand-teal-light);
+         display:flex;align-items:center;justify-content:center;flex-shrink:0;flex-direction:column;gap:0;">
+      <span style="font-size:16px;font-weight:700;color:var(--brand-navy);line-height:1;">3</span>
+      <span style="font-size:9px;color:var(--text-tertiary);line-height:1;">pessoas</span>
+    </div><div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+        <span style="font-weight:700;font-size:15px;color:var(--brand-navy);">NIS</span>
+        <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-tertiary);">EXE666</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:3px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--text-secondary);">Contrato assinado</span>
+        
+      </div>
+    </div><span class="badge" style="background:var(--gray-bg);color:var(--gray-text);flex-shrink:0;">
+      <span class="dot" style="background:var(--gray-dot);"></span>Sem dados
+    </span><i class="ti ti-chevron-right" style="color:var(--text-tertiary);flex-shrink:0;"></i></div><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><colgroup>
+        <col style="width:24px"><col style="width:22%"><col style="width:18%"><col style="width:20%"><col style="width:14%"><col style="width:14%">
+      </colgroup>
+      <thead><tr style="background:var(--bg-secondary);">
+        <th style="padding:6px 10px;"></th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Nome</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Cargo</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Função no projeto</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Início</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Fim previsto</th>
+      </tr></thead><tbody><tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">Danilo Silva</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr><tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">Jefferson Souza</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr><tr style="">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:400;color:var(--brand-navy);">Anderson Junior</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Técnico</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr></tbody></table></div></div><div class="card" style="border-top:3px solid var(--brand-teal);"><div style="display:flex;align-items:center;gap:14px;padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="goTab(&#39;portfolio&#39;);state.view=&#39;detail&#39;;state.currentId=&#39;p_8o59kgb7&#39;;render()" onmouseover="this.style.background=&#39;var(--bg-secondary)&#39;" onmouseout="this.style.background=&#39;transparent&#39;"><div style="width:42px;height:42px;border-radius:50%;background:var(--brand-teal-light);
+         display:flex;align-items:center;justify-content:center;flex-shrink:0;flex-direction:column;gap:0;">
+      <span style="font-size:16px;font-weight:700;color:var(--brand-navy);line-height:1;">1</span>
+      <span style="font-size:9px;color:var(--text-tertiary);line-height:1;">pessoa</span>
+    </div><div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+        <span style="font-weight:700;font-size:15px;color:var(--brand-navy);">Amazon Cajamar</span>
+        <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-tertiary);">EXE164</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:3px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--text-secondary);">Contrato assinado</span>
+        
+      </div>
+    </div><span class="badge" style="background:var(--gray-bg);color:var(--gray-text);flex-shrink:0;">
+      <span class="dot" style="background:var(--gray-dot);"></span>Sem dados
+    </span><i class="ti ti-chevron-right" style="color:var(--text-tertiary);flex-shrink:0;"></i></div><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><colgroup>
+        <col style="width:24px"><col style="width:22%"><col style="width:18%"><col style="width:20%"><col style="width:14%"><col style="width:14%">
+      </colgroup>
+      <thead><tr style="background:var(--bg-secondary);">
+        <th style="padding:6px 10px;"></th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Nome</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Cargo</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Função no projeto</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Início</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Fim previsto</th>
+      </tr></thead><tbody><tr style="background:var(--brand-teal-light);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-star-filled" style="font-size:12px;color:var(--brand-teal);" title="Coordenador"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:600;color:var(--brand-navy);"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--brand-teal);margin-right:5px;" title="Coordenador"></span>Hugo Sena</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Supervisor de Projetos</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">Coordenador</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr></tbody></table></div></div><div class="card" style="border-top:3px solid var(--brand-teal);"><div style="display:flex;align-items:center;gap:14px;padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="goTab(&#39;portfolio&#39;);state.view=&#39;detail&#39;;state.currentId=&#39;p_6xmqa77j&#39;;render()" onmouseover="this.style.background=&#39;var(--bg-secondary)&#39;" onmouseout="this.style.background=&#39;transparent&#39;"><div style="width:42px;height:42px;border-radius:50%;background:var(--brand-teal-light);
+         display:flex;align-items:center;justify-content:center;flex-shrink:0;flex-direction:column;gap:0;">
+      <span style="font-size:16px;font-weight:700;color:var(--brand-navy);line-height:1;">1</span>
+      <span style="font-size:9px;color:var(--text-tertiary);line-height:1;">pessoa</span>
+    </div><div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+        <span style="font-weight:700;font-size:15px;color:var(--brand-navy);">FDCO UK</span>
+        <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-tertiary);">EXE165</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:3px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--text-secondary);">Contrato assinado</span>
+        
+      </div>
+    </div><span class="badge" style="background:var(--gray-bg);color:var(--gray-text);flex-shrink:0;">
+      <span class="dot" style="background:var(--gray-dot);"></span>Sem dados
+    </span><i class="ti ti-chevron-right" style="color:var(--text-tertiary);flex-shrink:0;"></i></div><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><colgroup>
+        <col style="width:24px"><col style="width:22%"><col style="width:18%"><col style="width:20%"><col style="width:14%"><col style="width:14%">
+      </colgroup>
+      <thead><tr style="background:var(--bg-secondary);">
+        <th style="padding:6px 10px;"></th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Nome</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Cargo</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Função no projeto</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Início</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Fim previsto</th>
+      </tr></thead><tbody><tr style="background:var(--brand-teal-light);">
+          <td style="padding:8px 10px;text-align:center;">
+            <i class="ti ti-star-filled" style="font-size:12px;color:var(--brand-teal);" title="Coordenador"></i>
+          </td>
+          <td style="padding:8px 10px;font-weight:600;color:var(--brand-navy);"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--brand-teal);margin-right:5px;" title="Coordenador"></span>Hugo Sena</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">Supervisor de Projetos</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">Coordenador</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">—</td>
+        </tr></tbody></table></div></div></div><div style="margin-top:2rem;"><h2 style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+      <i class="ti ti-user-off" style="font-size:16px;color:var(--green-dot);"></i>
+      Colaboradores sem alocação ativa
+      <span style="background:var(--green-bg);
+        color:var(--green-text);
+        font-size:12px;font-weight:700;padding:2px 10px;border-radius:999px;">0</span>
+    </h2><div class="card" style="padding:16px;display:flex;align-items:center;gap:10px;color:var(--green-text);background:var(--green-bg);border:1px solid var(--green-dot);">
+        <i class="ti ti-circle-check" style="font-size:20px;flex-shrink:0;"></i>
+        <span style="font-size:13px;font-weight:500;">Todos os colaboradores estão alocados em pelo menos um projeto ativo.</span>
+      </div></div></div>
+</div>
+
+<script>
+// ─── constantes ────────────────────────────────────────────────────────────
+const PHASES = [
+  "Contrato assinado","Engenharia / Projeto","Compras de materiais","Contratação de M.O.",
+  "Mobilização","Passagem de cabos","Instalação de equip.","Programação",
+  "Comissionamento","Start-up","Treinamento","Operação assistida"
+];
+const SEED = [
+  {name:"Pq Global F4",   builder:"MBGR",  coordinator:"William", delivery:"2026-05-30"},
+  {name:"Microsoft",      builder:"-",     coordinator:"Diogo",   delivery:"2026-07-30"},
+  {name:"Morumbi",        builder:"CAN",   coordinator:"Diogo",   delivery:"2026-04-01"},
+  {name:"Prevent",        builder:"Start", coordinator:"Messias", delivery:"2026-05-01"},
+  {name:"GE",             builder:"-",     coordinator:"Emerson", delivery:null},
+  {name:"FourC",          builder:"CAN",   coordinator:"William", delivery:"2026-08-01"},
+  {name:"Mercado Cuiabá", builder:"-",     coordinator:"Diego",   delivery:"2026-04-01"},
+  {name:"Alemoa Petrobras",builder:"-",    coordinator:"Emerson", delivery:"2026-03-01"},
+  {name:"Rede D'Or Taubaté",builder:"-",  coordinator:"Diogo",   delivery:"2026-03-01"},
+  {name:"Joaquim Floriano",builder:"-",    coordinator:"William", delivery:"2026-03-01"},
+  {name:"3Z Itacema",     builder:"-",     coordinator:"Diogo",   delivery:null},
+  {name:"HB50",           builder:"-",     coordinator:"Diogo",   delivery:null},
+  {name:"Unimed Jundiaí", builder:"-",     coordinator:"Messias", delivery:null}
+];
+const STORAGE_KEY      = 'autobras-portfolio-v2';
+const STORAGE_COLAB    = 'autobras-colaboradores-v1';
+const STORAGE_EMPR     = 'autobras-empreiteiros-v1';
+
+// ─── helpers ────────────────────────────────────────────────────────────────
+const uid = () => 'p_' + Math.random().toString(36).slice(2,10);
+const todayISO = () => new Date().toISOString().slice(0,10);
+const fmtDate = d => {
+  if(!d) return '—';
+  return new Date(d+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
+};
+const daysBetween = (a,b) => Math.round((new Date(b)-new Date(a))/86400000);
+const fmtCurrency = v => v==null ? '—' : 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0});
+const fmtPct = v => v==null ? '—' : Number(v).toFixed(1)+'%';
+const esc = s => { if(s==null) return ''; return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); };
+
+function nextCode(projects){
+  let max=0;
+  projects.forEach(p=>{ const m=(p.code||'').match(/^EXE(\d+)$/); if(m) max=Math.max(max,+m[1]); });
+  return 'EXE'+String(max+1).padStart(3,'0');
+}
+
+// ─── modelo ─────────────────────────────────────────────────────────────────
+function makeProject(data,idx){
+  return {
+    id: uid(),
+    code: 'EXE'+String(idx+1).padStart(3,'0'),
+    name: data.name, builder: data.builder, coordinator: data.coordinator,
+    nis: '', estimatedDelivery: data.delivery,
+    manualFarol: null,
+    comments: [],        // [{date, text}]
+    phases: PHASES.map(n=>({name:n, plannedStart:null, plannedEnd:null, done:false, doneAt:null})),
+    allocations: [],
+    completed: false,
+    completedAt: null,
+    contractValue: null,   // R$ valor contratado
+    invoicedPct: null      // % medido/faturado acumulado (0-100)
+  };
+}
+
+function migrate(p, idx){
+  // phases
+  p.phases = p.phases.map(ph=>({
+    name: ph.name,
+    plannedStart: ph.plannedStart||ph.planned||null,
+    plannedEnd:   ph.plannedEnd||ph.planned||null,
+    done:    ph.done !== undefined ? ph.done : !!ph.actual,
+    doneAt:  ph.doneAt||ph.actual||null
+  }));
+  if(!p.comments){
+    // migrate old action string to first comment
+    p.comments = p.action ? [{date: todayISO(), text: p.action}] : [];
+    delete p.action;
+  }
+  if(!p.code) p.code = 'EXE'+String(idx+1).padStart(3,'0');
+  if(p.autobrasTeam !== undefined) delete p.autobrasTeam;
+  if(!p.nis) p.nis = '';
+  if(p.workforce !== undefined) delete p.workforce;
+  if(!p.allocations) p.allocations = [];
+  if(p.completed === undefined) p.completed = false;
+  if(p.completedAt === undefined) p.completedAt = null;
+  if(p.contractValue === undefined) p.contractValue = null;
+  if(p.invoicedPct === undefined) p.invoicedPct = null;
+  // migrar comentários sem tag
+  p.comments = p.comments.map(cm=>({ date:cm.date, text:cm.text, tag:cm.tag||'info' }));
+  return p;
+}
+
+// ─── estado ──────────────────────────────────────────────────────────────────
+let state = { projects:[], colaboradores:[], empreiteiros:[], view:'summary', currentId:null, dragIdx:null, tab:'portfolio', showHistory:false, colabSearch:'', importData:null, importMap:{} };
+
+function load(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    state.projects = raw ? JSON.parse(raw).map(migrate) : SEED.map(makeProject);
+  } catch(e){ state.projects = SEED.map(makeProject); }
+  try {
+    const rc = localStorage.getItem(STORAGE_COLAB);
+    state.colaboradores = rc ? JSON.parse(rc).map(migrateColab) : [];
+  } catch(e){ state.colaboradores = []; }
+  try {
+    const re = localStorage.getItem(STORAGE_EMPR);
+    state.empreiteiros = re ? JSON.parse(re) : [];
+  } catch(e){ state.empreiteiros = []; }
+  save(); render();
+}
+function save(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.projects));
+  localStorage.setItem(STORAGE_COLAB, JSON.stringify(state.colaboradores));
+  localStorage.setItem(STORAGE_EMPR, JSON.stringify(state.empreiteiros));
+}
+const cur = () => state.projects.find(p=>p.id===state.currentId);
+
+// ─── navegação de abas ───────────────────────────────────────────────────────
+function goTab(tab){
+  state.tab = tab;
+  // reset sub-views
+  state.view = 'summary';
+  state.currentId = null;
+  render();
+}
+function updateTabs(){
+  document.querySelectorAll('.nav-tab').forEach(el=>{
+    el.classList.toggle('active', el.id === 'tab-'+state.tab);
+  });
+}
+
+// ─── lógica de farol ─────────────────────────────────────────────────────────
+function phaseStatus(project){
+  let idx = project.phases.findIndex(p=>!p.done);
+  if(idx===-1) idx = project.phases.length-1;
+  return { currentIdx:idx, current:project.phases[idx] };
+}
+function suggestFarol(project){
+  const {current} = phaseStatus(project);
+  const ref = current.plannedEnd||current.plannedStart;
+  if(!ref) return 'gray';
+  if(current.done) return 'green';
+  const diff = daysBetween(ref, todayISO());
+  if(diff<=5) return 'green';
+  if(diff<=15) return 'amber';
+  return 'red';
+}
+const farol = p => p.manualFarol || suggestFarol(p);
+function farolStyle(f){
+  const map={
+    green:{bg:'var(--green-bg)',text:'var(--green-text)',dot:'var(--green-dot)'},
+    amber:{bg:'var(--amber-bg)',text:'var(--amber-text)',dot:'var(--amber-dot)'},
+    red:  {bg:'var(--red-bg)',  text:'var(--red-text)',  dot:'var(--red-dot)'},
+    gray: {bg:'var(--gray-bg)', text:'var(--gray-text)', dot:'var(--gray-dot)'}
+  }; return map[f]||map.gray;
+}
+const farolLabel = f => ({green:'No prazo',amber:'Atenção',red:'Atrasado',gray:'Sem dados'}[f]);
+function badgeHtml(f){
+  const s=farolStyle(f);
+  return `<span class="badge" style="background:${s.bg};color:${s.text};"><span class="dot" style="background:${s.dot};"></span>${farolLabel(f)}</span>`;
+}
+
+// ─── pesos por duração ───────────────────────────────────────────────────────
+function phaseDur(ph){
+  if(ph.plannedStart&&ph.plannedEnd){ const d=daysBetween(ph.plannedStart,ph.plannedEnd); return d>0?d:1; }
+  return null;
+}
+function weights(project){
+  const durs=project.phases.map(phaseDur);
+  const known=durs.filter(d=>d!==null);
+  if(!known.length) return project.phases.map(()=>1/project.phases.length);
+  const total=known.reduce((a,b)=>a+b,0);
+  if(durs.every(d=>d!==null)) return durs.map(d=>d/total);
+  const avg=total/known.length;
+  const est=total+avg*(durs.length-known.length);
+  return durs.map(d=>(d!==null?d:avg)/est);
+}
+function weightedProgress(project){
+  const w=weights(project);
+  return Math.round(project.phases.reduce((acc,ph,i)=>acc+(ph.done?w[i]:0),0)*100);
+}
+
+// ─── render principal ────────────────────────────────────────────────────────
+function render(){
+  updateTabs();
+  window.scrollTo({top:0,behavior:'instant'});
+  const app=document.getElementById('app');
+  if(state.tab==='colaboradores'){ renderColaboradores(app); return; }
+  if(state.tab==='empreiteiros'){ renderEmpreiteiros(app); return; }
+  if(state.tab==='visao-colab'){ renderVisaoColab(app); return; }
+  if(state.view==='summary') renderSummary(app);
+  else renderDetail(app);
+}
+
+// ─── SUMMARY ─────────────────────────────────────────────────────────────────
+function renderSummary(app){
+  const allProjects = state.projects;
+  const history  = allProjects.filter(p=>p.completed);
+  const ps       = allProjects.filter(p=>!p.completed);  // apenas ativos
+  const cnt={green:0,amber:0,red:0,gray:0};
+  ps.forEach(p=>cnt[farol(p)]++);
+
+  const carteira = ps.reduce((s,p)=>s+(p.contractValue||0),0);
+  const carteiraTxt = carteira>0 ? 'R$ '+carteira.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0}) : '—';
+  let h='';
+  // métricas
+  h+=`<div class="metrics" style="grid-template-columns:repeat(5,1fr);">`;
+  h+=metric('Projetos ativos',ps.length,null);
+  h+=metric('No prazo',cnt.green,'var(--green-dot)');
+  h+=metric('Atenção',cnt.amber,'var(--amber-dot)');
+  h+=metric('Atrasados',cnt.red,'var(--red-dot)');
+  h+=metric('Carteira total',carteiraTxt,'var(--brand-teal)');
+  h+=`</div>`;
+
+  h+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">`;
+  h+=`<p style="font-size:12px;color:var(--text-tertiary);margin:0;">Arraste as linhas para reordenar. Clique no nome do projeto para abrir os detalhes.</p>`;
+  h+=`<button onclick="addProject()"><i class="ti ti-plus"></i>Novo projeto</button>`;
+  h+=`</div>`;
+
+  h+=`<div class="tbl-wrap"><table><colgroup>
+    <col style="width:28px">
+    <col style="width:8%"><col style="width:15%"><col style="width:12%">
+    <col style="width:9%"><col style="width:7%"><col style="width:10%"><col style="width:11%">
+    <col style="width:10%"><col style="width:15%">
+  </colgroup><thead><tr>
+    <th></th>
+    <th>Código</th><th>Projeto</th><th>Etapa atual</th>
+    <th>Farol</th><th>Físico</th><th>Valor contratado</th><th>Medido / Desvio</th>
+    <th>Responsável</th><th>Última observação</th>
+  </tr></thead><tbody id="proj-tbody">`;
+
+  ps.forEach((p,i)=>{
+    const f=farol(p);
+    const {current}=phaseStatus(p);
+    const pct=weightedProgress(p);
+    const lastCm = p.comments.length ? p.comments[p.comments.length-1] : null;
+    const lastComment = lastCm ? lastCm.text : '—';
+    const lastCommentTag = lastCm ? lastCm.tag : null;
+    const openPendencias = p.comments.filter(cm=>cm.tag==='pending').length;
+    h+=`<tr class="clickable" draggable="true"
+      ondragstart="dragStart(event,${i})"
+      ondragover="dragOver(event,${i})"
+      ondrop="drop(event,${i})"
+      ondragleave="dragLeave(event)"
+      ondragend="dragEnd()"
+      data-idx="${i}">
+      <td style="padding:8px 6px 8px 10px;color:var(--text-tertiary);cursor:grab;" onclick="event.stopPropagation()">
+        <i class="ti ti-grip-vertical" style="font-size:16px;vertical-align:middle;"></i>
+      </td>
+      <td style="font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);" onclick="openProject('${p.id}')">${esc(p.code)}</td>
+      <td style="font-weight:500;" onclick="openProject('${p.id}')">${esc(p.name)}</td>
+      <td style="color:var(--text-secondary);" onclick="openProject('${p.id}')">${esc(current.name)}</td>
+      <td onclick="openProject('${p.id}')">${badgeHtml(f)}</td>
+      <td style="color:var(--text-secondary);" onclick="openProject('${p.id}')">${pct}%</td>
+      <td style="color:var(--text-secondary);font-size:12px;" onclick="openProject('${p.id}')">${p.contractValue ? fmtCurrency(p.contractValue) : '<span style=\"color:var(--text-tertiary)\">Não informado</span>'}</td>
+      <td onclick="openProject('${p.id}')">
+        ${p.invoicedPct!=null ? `<span style="font-size:12px;">${fmtPct(p.invoicedPct)}</span>
+        ${p.contractValue ? `<span style="font-size:11px;margin-left:6px;color:${p.invoicedPct-pct>5?'var(--amber-dot)':p.invoicedPct-pct<-10?'var(--red-dot)':'var(--green-dot)'}">${p.invoicedPct-pct>0?'+':''}${(p.invoicedPct-pct).toFixed(1)}pp</span>` : ''}`
+        : '<span style=\"color:var(--text-tertiary);font-size:12px;\">—</span>'}
+      </td>
+      <td style="color:var(--text-secondary);" onclick="openProject('${p.id}')">${esc(p.coordinator||'—')}</td>
+      <td style="color:var(--text-secondary);" onclick="openProject('${p.id}')">${p.estimatedDelivery?fmtDate(p.estimatedDelivery):'—'}</td>
+      <td style="overflow:hidden;max-width:0;" onclick="openProject('${p.id}')">
+        <div style="display:flex;align-items:center;gap:6px;overflow:hidden;">
+          ${openPendencias>0 ? `<span style="background:var(--amber-bg);color:var(--amber-text);font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;flex-shrink:0;">${openPendencias}⚠</span>` : ''}
+          <span style="color:var(--text-secondary);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(lastComment)}</span>
+        </div>
+      </td>
+    </tr>`;
+  });
+
+  h+=`</tbody></table></div>`;
+
+  // ── painel de carga por coordenador
+  const allCoords = [...new Set(ps.map(p=>p.coordinator).filter(Boolean))].sort();
+  if(allCoords.length > 0){
+    h+=`<h2 style="margin:2rem 0 0.75rem;display:flex;align-items:center;gap:8px;">
+      <i class="ti ti-users" style="font-size:16px;color:var(--brand-teal);"></i>
+      Carga por coordenador
+    </h2>`;
+    h+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:2rem;">`;
+    allCoords.forEach(coord=>{
+      const projCoord = ps.filter(p=>p.coordinator===coord);
+      const n = projCoord.length;
+      const alertas = projCoord.filter(p=>farol(p)==='amber'||farol(p)==='red').length;
+      const pendencias = projCoord.reduce((s,p)=>s+p.comments.filter(cm=>cm.tag==='pending').length,0);
+      const cargaColor = n>=4 ? 'var(--red-dot)' : n===3 ? 'var(--amber-dot)' : 'var(--green-dot)';
+      const cargaBg    = n>=4 ? 'var(--red-bg)'  : n===3 ? 'var(--amber-bg)'  : 'var(--green-bg)';
+      const cargaLabel = n>=4 ? 'Sobrecarregado' : n===3 ? 'Atenção' : 'Equilibrado';
+      h+=`<div class="card" style="padding:14px;border-top:3px solid ${cargaColor};">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+          <div>
+            <p style="font-weight:600;font-size:14px;color:var(--brand-navy);margin:0;">${esc(coord)}</p>
+            <span style="font-size:11px;background:${cargaBg};color:${cargaColor};padding:1px 7px;border-radius:999px;font-weight:600;">${cargaLabel}</span>
+          </div>
+          <span style="font-size:28px;font-weight:700;color:${cargaColor};line-height:1;">${n}</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          ${alertas>0?`<span style="font-size:11px;background:var(--amber-bg);color:var(--amber-text);padding:2px 7px;border-radius:999px;">${alertas} alerta${alertas>1?'s':''}</span>`:''}
+          ${pendencias>0?`<span style="font-size:11px;background:var(--amber-bg);color:var(--amber-text);padding:2px 7px;border-radius:999px;">${pendencias} pendência${pendencias>1?'s':''}</span>`:''}
+          ${alertas===0&&pendencias===0?`<span style="font-size:11px;color:var(--text-tertiary);">Sem alertas</span>`:''}
+        </div>
+        <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:3px;">
+          ${projCoord.map(p=>{
+            const f=farol(p);
+            const fc=farolStyle(f);
+            return `<li style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;" onclick="openProject('${p.id}')">
+              <span style="width:7px;height:7px;border-radius:50%;background:${fc.dot};flex-shrink:0;"></span>
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-secondary);">${esc(p.name)}</span>
+            </li>`;
+          }).join('')}
+        </ul>
+      </div>`;
+    });
+    h+=`</div>`;
+  }
+
+  // ── histórico de projetos concluídos
+  if(history.length > 0){
+    const open = state.showHistory;
+    h+=`<div style="margin-top:2rem;">
+      <button onclick="toggleHistory()" style="font-size:13px;color:var(--text-secondary);border:none;background:transparent;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;">
+        <i class="ti ti-${open?'chevron-down':'chevron-right'}" style="font-size:15px;"></i>
+        <span style="font-weight:500;">Histórico de projetos concluídos</span>
+        <span style="background:var(--green-bg);color:var(--green-text);padding:1px 8px;border-radius:999px;font-size:12px;">${history.length}</span>
+      </button>
+    </div>`;
+    if(open){
+      h+=`<div class="tbl-wrap" style="margin-top:10px;opacity:.85;"><table style="table-layout:fixed;">
+        <colgroup>
+          <col style="width:9%"><col style="width:20%"><col style="width:12%">
+          <col style="width:10%"><col style="width:12%"><col style="width:13%"><col style="width:24%">
+        </colgroup>
+        <thead><tr style="background:var(--bg-secondary);">
+          <th>Código</th><th>Projeto</th><th>Coordenador</th>
+          <th>Avanço final</th><th>Entrega prevista</th><th>Concluído em</th><th>Última observação</th>
+        </tr></thead><tbody>`;
+      history.forEach(p=>{
+        const wts = weights(p);
+        let wp=0; p.phases.forEach((ph,i)=>{ if(ph.done) wp+=wts[i]; });
+        const pct=Math.round(wp*100);
+        const lastComment=p.comments.length?p.comments[p.comments.length-1].text:'—';
+        h+=`<tr class="clickable" onclick="openProject('${p.id}')">
+          <td style="font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);">${esc(p.code)}</td>
+          <td style="font-weight:500;">${esc(p.name)}</td>
+          <td style="color:var(--text-secondary);">${esc(p.coordinator||'—')}</td>
+          <td><span class="badge" style="background:var(--green-bg);color:var(--green-text);"><span class="dot" style="background:var(--green-dot);"></span>${pct}%</span></td>
+          <td style="color:var(--text-secondary);">${p.estimatedDelivery?fmtDate(p.estimatedDelivery):'—'}</td>
+          <td style="color:var(--text-secondary);">${fmtDate(p.completedAt)}</td>
+          <td style="color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(lastComment)}</td>
+        </tr>`;
+      });
+      h+=`</tbody></table></div>`;
+    }
+  }
+
+  app.innerHTML=h;
+}
+
+function metric(label,value,color){
+  return `<div class="metric"><div class="label">${label}</div>
+    <div class="value" ${color?`style="color:${color}"`:''}>${value}</div></div>`;
+}
+
+// ─── DRAG & DROP ─────────────────────────────────────────────────────────────
+function dragStart(e,idx){
+  state.dragIdx=idx;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move';
+}
+function dragOver(e,idx){
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+  document.querySelectorAll('#proj-tbody tr').forEach(r=>r.classList.remove('drag-over'));
+  e.currentTarget.classList.add('drag-over');
+}
+function dragLeave(e){ e.currentTarget.classList.remove('drag-over'); }
+function drop(e,targetIdx){
+  e.preventDefault();
+  const from=state.dragIdx;
+  if(from===null||from===targetIdx) return;
+  const arr=state.projects;
+  const item=arr.splice(from,1)[0];
+  arr.splice(targetIdx,0,item);
+  state.dragIdx=null;
+  save(); render();
+}
+function dragEnd(){
+  state.dragIdx=null;
+  document.querySelectorAll('#proj-tbody tr').forEach(r=>{
+    r.classList.remove('drag-over','dragging');
+  });
+}
+
+// ─── DETAIL ──────────────────────────────────────────────────────────────────
+function renderDetail(app){
+  const p=cur(); if(!p){ backToSummary(); return; }
+  const f=farol(p);
+  const fs=farolStyle(f);
+  const {currentIdx}=phaseStatus(p);
+  const pct=weightedProgress(p);
+
+  let h='';
+  // nav
+  const completedBtnHtml = p.completed
+    ? `<button onclick="reactivateProject('${p.id}')" style="border-color:var(--border);color:var(--text-secondary);">
+        <i class="ti ti-refresh"></i>Reativar projeto
+       </button>`
+    : `<button onclick="completeProject('${p.id}')" style="background:var(--brand-teal);border-color:var(--brand-teal-dark);color:#fff;">
+        <i class="ti ti-circle-check"></i>Marcar como concluído
+       </button>`;
+  h+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;gap:10px;flex-wrap:wrap;">
+    <button onclick="backToSummary()"><i class="ti ti-arrow-left"></i>Voltar ao painel</button>
+    <div style="display:flex;align-items:center;gap:10px;">
+      ${p.completed ? `<span style="font-size:12px;color:var(--text-secondary);">Concluído em ${fmtDate(p.completedAt)}</span>` : ''}
+      ${completedBtnHtml}
+      ${badgeHtml(f)}
+    </div>
+  </div>`;
+
+  // título
+  h+=`<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:1.5rem;">
+    <h1 style="font-size:22px;font-weight:500;">${esc(p.name)}</h1>
+    <span style="font-family:var(--font-mono);font-size:13px;color:var(--text-secondary);">${esc(p.code)}</span>
+  </div>`;
+
+  // campos cabeçalho
+  h+=`<div class="form-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:1.5rem;">`;
+  h+=field('Código',`<input id="f-code" value="${esc(p.code)}" onchange="saveField('code',this.value)">`);
+  const emprOptions = state.empreiteiros.map(e=>
+    `<option value="${esc(e.name)}" ${p.builder===e.name?'selected':''}>${esc(e.name)}${e.city?' — '+esc(e.city):''}</option>`
+  ).join('');
+  const emprHasOrphan = p.builder && p.builder!=='-' && !state.empreiteiros.find(e=>e.name===p.builder);
+  h+=field('Empreiteiro', emprOptions
+    ? `<select onchange="saveField('builder',this.value)" style="height:36px;">
+        <option value="" ${!p.builder?'selected':''}>Selecionar empreiteiro...</option>
+        <option value="-" ${p.builder==='-'?'selected':''}>Sem empreiteiro</option>
+        ${emprOptions}
+        ${emprHasOrphan?`<option value="${esc(p.builder)}" selected>${esc(p.builder)} ⚠</option>`:''}
+       </select>`
+    : `<input id="f-builder" value="${esc(p.builder)}" onchange="saveField('builder',this.value)" placeholder="Cadastre empreiteiros na aba Empreiteiros">`);
+  const coordOptions = state.colaboradores.length
+    ? state.colaboradores.map(col=>
+        `<option value="${esc(col.name)}" ${p.coordinator===col.name?'selected':''}>${esc(col.name)}${col.role?' — '+esc(col.role):''}</option>`
+      ).join('')
+    : '';
+  const coordHasOrphan = p.coordinator && !state.colaboradores.find(col=>col.name===p.coordinator);
+  h+=field('Coordenador',`<select onchange="saveFieldRender('coordinator',this.value)" style="height:36px;">
+    <option value="" ${!p.coordinator?'selected':''}>Selecionar coordenador...</option>
+    ${coordOptions}
+    ${coordHasOrphan ? `<option value="${esc(p.coordinator)}" selected>${esc(p.coordinator)} ⚠ não encontrado</option>` : ''}
+    ${!coordOptions ? '<option disabled>Cadastre colaboradores na aba Colaboradores</option>' : ''}
+  </select>`);
+  h+=field('Entrega prevista',`<input type="date" value="${p.estimatedDelivery||''}" onchange="saveFieldRender('estimatedDelivery',this.value||null)">`);
+  h+=`</div>`;
+
+  // ── painel financeiro
+  const desvioFin = (p.invoicedPct!=null) ? (p.invoicedPct - pct) : null;
+  const desvioColor = desvioFin===null ? 'var(--text-secondary)'
+    : desvioFin >  5 ? 'var(--amber-dot)'
+    : desvioFin < -10? 'var(--red-dot)'
+    : 'var(--green-dot)';
+  const desvioMsg = desvioFin===null ? 'Preencha o % medido'
+    : desvioFin > 5  ? 'Medido acima do físico'
+    : desvioFin < -10? 'Físico à frente do medido'
+    : 'Dentro da margem';
+  h+=`<h2 style="margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+    <i class="ti ti-cash" style="font-size:16px;color:var(--brand-teal);"></i>
+    Dados financeiros
+  </h2>`;
+  h+=`<div class="card" style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-bottom:2rem;">`;
+  // bloco 1: valor contratado
+  h+=`<div style="padding:16px;border-right:1px solid var(--border);">
+    <p style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Valor contratado</p>
+    <input value="${p.contractValue!=null?p.contractValue:''}" placeholder="Ex: 6587507.78"
+      onchange="saveFieldRender('contractValue',this.value?parseFloat(this.value.replace(/[^0-9.,]/g,'').replace(',','.')):null)"
+      style="height:32px;font-size:13px;font-weight:600;margin-bottom:4px;">
+    ${p.contractValue ? `<p style="font-size:13px;font-weight:700;color:var(--brand-navy);">${fmtCurrency(p.contractValue)}</p>` : `<p style="font-size:11px;color:var(--text-tertiary);">Informe o valor total do contrato (R$)</p>`}
+  </div>`;
+  // bloco 2: avanço físico
+  h+=`<div style="padding:16px;border-right:1px solid var(--border);">
+    <p style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Avanço físico</p>
+    <p style="font-size:30px;font-weight:700;color:var(--brand-navy);line-height:1.1;margin-bottom:4px;">${pct}%</p>
+    <p style="font-size:11px;color:var(--text-tertiary);">Calculado pelas fases concluídas</p>
+  </div>`;
+  // bloco 3: % medido
+  h+=`<div style="padding:16px;border-right:1px solid var(--border);">
+    <p style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">% Medido / Faturado</p>
+    <input type="number" min="0" max="100" step="0.1" value="${p.invoicedPct!=null?p.invoicedPct:''}" placeholder="0 – 100"
+      onchange="saveFieldRender('invoicedPct',this.value!==''?parseFloat(this.value):null)"
+      style="height:32px;font-size:13px;font-weight:600;margin-bottom:4px;">
+    <p style="font-size:11px;color:var(--text-tertiary);">% acumulado medido ao cliente</p>
+  </div>`;
+  // bloco 4: desvio
+  h+=`<div style="padding:16px;">
+    <p style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Desvio fin. vs físico</p>
+    <p style="font-size:30px;font-weight:700;color:${desvioColor};line-height:1.1;margin-bottom:4px;">${desvioFin!==null?(desvioFin>0?'+':'')+desvioFin.toFixed(1)+'pp':'—'}</p>
+    <p style="font-size:11px;color:${desvioColor};">${desvioMsg}</p>
+  </div>`;
+  h+=`</div>`;
+
+  // farol manual
+  h+=`<div style="margin-bottom:2rem;">
+    <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px;">Farol manual (sobrepõe a sugestão automática)</label>
+    <select style="width:280px;" onchange="saveFieldRender('manualFarol',this.value===''?null:this.value)">
+      <option value="" ${!p.manualFarol?'selected':''}>Automático — sugerido: ${farolLabel(suggestFarol(p))}</option>
+      <option value="green" ${p.manualFarol==='green'?'selected':''}>Verde — No prazo</option>
+      <option value="amber" ${p.manualFarol==='amber'?'selected':''}>Amarelo — Atenção</option>
+      <option value="red"   ${p.manualFarol==='red'  ?'selected':''}>Vermelho — Atrasado</option>
+    </select>
+  </div>`;
+
+  // ── fases
+  h+=`<h2 style="margin-bottom:6px;">Fases do projeto</h2>`;
+  h+=`<p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">Avanço ponderado por duração: ${pct}% — etapa atual: <strong>${esc(p.phases[currentIdx].name)}</strong></p>`;
+  const w=weights(p);
+  h+=`<div class="card" style="margin-bottom:2rem;">`;
+  h+=`<div class="card-header" style="grid-template-columns:32px 1.4fr 1fr 1fr 56px;">
+    <span></span><span>Fase</span><span>Início previsto</span><span>Fim previsto</span><span>Peso</span>
+  </div>`;
+  p.phases.forEach((ph,i)=>{
+    const isCur = i===p.phases.findIndex(x=>!x.done)||(p.phases.every(x=>x.done)&&i===p.phases.length-1);
+    const ref=ph.plannedEnd||ph.plannedStart;
+    const late=!ph.done&&ref&&daysBetween(ref,todayISO())>5;
+    const dotColor=ph.done?'var(--green-dot)':(isCur?(late?'var(--red-dot)':'var(--amber-dot)'):'var(--border-strong)');
+    const bg=isCur?'var(--bg-secondary)':'transparent';
+    const wp=Math.round(w[i]*1000)/10;
+    h+=`<div class="phase-row" style="grid-template-columns:32px 1.4fr 1fr 1fr 56px;background:${bg};">
+      <button class="phase-check ${ph.done?'done':''}" onclick="togglePhase(${i})" title="${ph.done?'Marcar como pendente':'Marcar como concluída'}">
+        ${ph.done?'<i class="ti ti-check" style="font-size:13px;"></i>':''}
+      </button>
+      <span style="${ph.done?'text-decoration:line-through;color:var(--text-tertiary);':''}">${esc(ph.name)}</span>
+      <input type="date" value="${ph.plannedStart||''}" onchange="savePhase(${i},'plannedStart',this.value||null)" style="height:30px;font-size:12px;">
+      <input type="date" value="${ph.plannedEnd||''}"   onchange="savePhase(${i},'plannedEnd',  this.value||null)" style="height:30px;font-size:12px;">
+      <span style="color:var(--text-secondary);font-size:12px;">${wp}%</span>
+    </div>`;
+  });
+  h+=`</div>`;
+
+  // ── curva S
+  h+=`<h2 style="margin-bottom:12px;">Curva S — avanço planejado x realizado</h2>`;
+  h+=`<div class="card" style="padding:16px;margin-bottom:2rem;height:300px;">
+    <canvas id="scurve"></canvas>
+  </div>`;
+
+  // ── comentários
+  const pendentes = p.comments.filter(cm=>cm.tag==='pending').length;
+  h+=`<h2 style="margin-bottom:6px;">Histórico de observações`;
+  if(pendentes>0) h+=` <span style="background:var(--amber-bg);color:var(--amber-text);font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;margin-left:8px;vertical-align:middle;">${pendentes} pendência${pendentes>1?'s':''}</span>`;
+  h+=`</h2>`;
+  h+=`<p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">Use as tags para classificar: <strong>Pendência</strong> fica destacada até ser marcada como resolvida.</p>`;
+  h+=`<div class="card" style="margin-bottom:2rem;">`;
+  if(p.comments.length===0){
+    h+=`<div style="padding:14px;color:var(--text-tertiary);font-size:13px;">Nenhuma observação ainda.</div>`;
+  } else {
+    const tagLabels = {info:'Informativo', pending:'Pendência', resolved:'Resolvido'};
+    const tagIcons  = {info:'ti-info-circle', pending:'ti-alert-triangle', resolved:'ti-circle-check'};
+    h+=`<div class="comment-list">`;
+    [...p.comments].map((cm,i)=>({...cm,origIdx:i})).reverse().forEach(cm=>{
+      const tagClass = 'comment-tag-'+cm.tag;
+      const rowBg = cm.tag==='pending' ? 'background:var(--amber-bg);' : cm.tag==='resolved' ? 'background:var(--green-bg);opacity:.8;' : '';
+      h+=`<div class="comment-item" style="${rowBg}">
+        <span class="comment-date">${fmtDate(cm.date)}</span>
+        <span class="comment-text" style="${cm.tag==='resolved'?'text-decoration:line-through;opacity:.6;':''}">${esc(cm.text)}</span>
+        <div style="display:flex;gap:6px;align-items:center;margin-left:auto;flex-shrink:0;">
+          <span class="comment-tag ${tagClass}"><i class="ti ${tagIcons[cm.tag]}" style="font-size:11px;"></i>${tagLabels[cm.tag]}</span>
+          ${cm.tag==='pending' ? `<button onclick="resolveComment(${cm.origIdx})" title="Marcar como resolvida" style="height:24px;width:24px;padding:0;border:none;background:transparent;color:var(--green-dot);cursor:pointer;"><i class="ti ti-check" style="font-size:14px;"></i></button>` : ''}
+          <button onclick="deleteComment(${cm.origIdx})" title="Remover" style="height:24px;width:24px;padding:0;border:none;background:transparent;color:var(--text-tertiary);cursor:pointer;"><i class="ti ti-trash" style="font-size:13px;"></i></button>
+        </div>
+      </div>`;
+    });
+    h+=`</div>`;
+  }
+  h+=`<div class="comment-input-wrap">
+    <select id="comment-tag-select" style="width:140px;height:34px;flex-shrink:0;">
+      <option value="info">Informativo</option>
+      <option value="pending">Pendência</option>
+      <option value="resolved">Resolvido</option>
+    </select>
+    <input id="comment-input" type="text" placeholder="Adicionar observação e pressionar Enter..." onkeydown="handleComment(event)" style="flex:1;">
+    <button onclick="submitComment()" class="primary"><i class="ti ti-send"></i>Registrar</button>
+  </div>`;
+  h+=`</div>`;
+
+  // ── alocação de colaboradores
+  h+=`<h2 style="margin-bottom:6px;">Alocação de colaboradores</h2>`;
+  h+=`<p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">Colaboradores da Autobras alocados neste projeto.</p>`;
+  h+=`<div id="alloc-section">${renderAllocations(p)}</div>`;
+
+  app.innerHTML=h;
+  drawSCurve(p,w);
+}
+
+function field(label,inputHtml){
+  return `<div><label>${label}</label>${inputHtml}</div>`;
+}
+
+// ─── ações de dados (sem re-render para texto) ──────────────────────────────
+function saveField(key,val){ const p=cur(); if(p){ p[key]=val; save(); } }
+function saveFieldRender(key,val){ const p=cur(); if(p){ p[key]=val; save(); render(); } }
+function savePhase(idx,key,val){ const p=cur(); if(p){ p.phases[idx][key]=val; save(); render(); } }
+
+function togglePhase(idx){
+  const p=cur(); if(!p) return;
+  p.phases[idx].done=!p.phases[idx].done;
+  p.phases[idx].doneAt=p.phases[idx].done?todayISO():null;
+  save(); render();
+}
+
+function handleComment(e){ if(e.key==='Enter') submitComment(); }
+function submitComment(){
+  const inp=document.getElementById('comment-input');
+  const sel=document.getElementById('comment-tag-select');
+  if(!inp||!inp.value.trim()) return;
+  const p=cur(); if(!p) return;
+  const tag = sel ? sel.value : 'info';
+  p.comments.push({date:todayISO(), text:inp.value.trim(), tag});
+  save(); render();
+}
+function resolveComment(idx){
+  const p=cur(); if(!p) return;
+  // idx é relativo ao array original (não invertido)
+  p.comments[idx].tag='resolved';
+  save(); render();
+}
+function deleteComment(idx){
+  const p=cur(); if(!p) return;
+  p.comments.splice(idx,1);
+  save(); render();
+}
+
+// ─── curva S ─────────────────────────────────────────────────────────────────
+let chartInst=null;
+function drawSCurve(p,w){
+  const ctx=document.getElementById('scurve'); if(!ctx) return;
+  if(chartInst){ chartInst.destroy(); chartInst=null; }
+  const labels=p.phases.map(ph=>ph.name);
+  const n=labels.length;
+
+  // planejado físico acumulado (% fases cujo fim previsto já passou)
+  let cumP=0;
+  const plannedSeries=p.phases.map((ph,i)=>{
+    const ref=ph.plannedEnd||ph.plannedStart;
+    if(ref&&new Date(ref)<=new Date(todayISO())) cumP+=w[i];
+    return Math.round(cumP*1000)/10;
+  });
+
+  // realizado físico acumulado (fases concluídas)
+  let cumA=0;
+  const actualSeries=p.phases.map((ph,i)=>{
+    if(ph.done) cumA+=w[i];
+    return Math.round(cumA*1000)/10;
+  });
+
+  // realizado financeiro: linha horizontal no % medido/faturado
+  // distribuído pelas fases concluídas proporcionalmente (ou linha reta no valor atual)
+  const datasets=[
+    {label:'Planejado físico', data:plannedSeries, borderColor:'#8a9bb5', borderDash:[6,3], backgroundColor:'transparent', tension:.3, pointRadius:3, borderWidth:2},
+    {label:'Realizado físico', data:actualSeries,  borderColor:'#00B2C5', backgroundColor:'transparent', tension:.3, pointRadius:4, borderWidth:2.5}
+  ];
+
+  if(p.invoicedPct!=null){
+    // linha financeira: sobe junto com o físico realizado mas no valor invoicedPct no último ponto
+    const physDone = actualSeries[n-1]; // % físico atual
+    const finRatio = physDone > 0 ? p.invoicedPct / physDone : 1;
+    const finSeries = actualSeries.map(v => Math.round(Math.min(v*finRatio, 100)*10)/10);
+    datasets.push({
+      label:'Medido financeiro', data:finSeries,
+      borderColor:'#e08000', backgroundColor:'transparent',
+      tension:.3, pointRadius:3, borderWidth:2, borderDash:[3,3]
+    });
+  }
+
+  chartInst=new Chart(ctx,{
+    type:'line',
+    data:{labels, datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{
+        y:{min:0,max:100,ticks:{callback:v=>v+'%'},grid:{color:'rgba(0,0,0,.05)'}},
+        x:{ticks:{autoSkip:false,maxRotation:40,font:{size:10}},grid:{display:false}}
+      },
+      plugins:{legend:{display:true,position:'top',labels:{boxWidth:12,font:{size:11},padding:16}}}
+    }
+  });
+}
+
+// ─── navegação de projetos ───────────────────────────────────────────────────
+function openProject(id){ state.currentId=id; state.view='detail'; render(); }
+function backToSummary(){ state.view='summary'; state.currentId=null; render(); }
+function toggleHistory(){ state.showHistory=!state.showHistory; render(); }
+
+function completeProject(id){
+  if(!confirm('Marcar este projeto como concluído? Ele será movido para o histórico.')) return;
+  const p = state.projects.find(x=>x.id===id);
+  if(!p) return;
+  p.completed  = true;
+  p.completedAt = todayISO();
+  save();
+  backToSummary();
+}
+
+function reactivateProject(id){
+  if(!confirm('Reativar este projeto? Ele voltará para a lista de projetos ativos.')) return;
+  const p = state.projects.find(x=>x.id===id);
+  if(!p) return;
+  p.completed  = false;
+  p.completedAt = null;
+  save(); render();
+}
+
+// ─── adicionar projeto ───────────────────────────────────────────────────────
+function addProject(){
+  const name=prompt('Nome do novo projeto:');
+  if(!name||!name.trim()) return;
+  const suggested=nextCode(state.projects);
+  const code=prompt('Código do projeto:',suggested)||suggested;
+  state.projects.push({
+    id:uid(), code:code.trim(), name:name.trim(),
+    builder:'', coordinator:'', nis:'',
+    estimatedDelivery:null, manualFarol:null, comments:[],
+    phases:PHASES.map(n=>({name:n,plannedStart:null,plannedEnd:null,done:false,doneAt:null})),
+    allocations:[]
+  });
+  save(); render();
+}
+
+// ─── COLABORADORES ───────────────────────────────────────────────────────────
+function makeColab(){
+  return { id:uid(), name:'', role:'', admission:null, lastVacation:null, nextVacation:null, notes:'' };
+}
+function migrateColab(c){
+  if(c.lastVacation===undefined) c.lastVacation=null;
+  return c;
+}
+
+// ── Lógica trabalhista de férias (CLT) ──────────────────────────────────────
+// Período aquisitivo: 12 meses após admissão ou última férias
+// Período concessivo: os 12 meses seguintes (employer must grant vacation)
+// Expiração legal: refDate + 24 meses
+// Alertas:
+//   - "Em aquisição"     → ainda no período aquisitivo (< 12 meses da refDate)
+//   - "Disponível"       → aquisitivo completo, concessivo >60 dias para vencer
+//   - "Próximo de venc." → concessivo vence em ≤60 dias
+//   - "Período vencido"  → concessivo venceu (risco de férias em dobro)
+
+function addMonths(isoDate, months){
+  const d = new Date(isoDate + 'T00:00:00');
+  d.setMonth(d.getMonth() + months);
+  return d.toISOString().slice(0,10);
+}
+
+function vacationLegal(c){
+  const ref = c.lastVacation || c.admission;
+  if(!ref) return null;
+  return {
+    aquisitivoEnd: addMonths(ref, 12),
+    concessivoEnd: addMonths(ref, 24)
+  };
+}
+
+function vacationStatus(c){
+  const legal = vacationLegal(c);
+  if(!legal) return 'no-data';
+  const today = todayISO();
+  if(today < legal.aquisitivoEnd)  return 'acquiring';
+  const daysLeft = daysBetween(today, legal.concessivoEnd);
+  if(daysLeft < 0)   return 'expired';
+  if(daysLeft <= 60) return 'expiring';
+  return 'available';
+}
+
+function vacationBadgeHtml(c){
+  const s = vacationStatus(c);
+  const legal = vacationLegal(c);
+  if(s==='no-data')
+    return badge('var(--gray-bg)','var(--gray-text)','var(--gray-dot)','Admissão não informada');
+  if(s==='acquiring'){
+    const d = daysBetween(todayISO(), legal.aquisitivoEnd);
+    return badge('var(--gray-bg)','var(--gray-text)','var(--gray-dot)',`Em aquisição — ${d} dia${d===1?'':'s'} restantes`);
+  }
+  if(s==='available'){
+    const d = daysBetween(todayISO(), legal.concessivoEnd);
+    return badge('var(--brand-teal-light)','var(--brand-navy)','var(--brand-teal)',`Disponível — vence em ${d} dias`);
+  }
+  if(s==='expiring'){
+    const d = daysBetween(todayISO(), legal.concessivoEnd);
+    return badge('var(--amber-bg)','var(--amber-text)','var(--amber-dot)',`⚠ Próximo de vencimento — ${d} dia${d===1?'':'s'}`);
+  }
+  // expired
+  const d = daysBetween(legal.concessivoEnd, todayISO());
+  return badge('var(--red-bg)','var(--red-text)','var(--red-dot)',`✕ Período vencido há ${d} dia${d===1?'':'s'} — risco férias em dobro`);
+}
+
+function badge(bg,txt,dot,label){
+  return `<span class="badge" style="background:${bg};color:${txt};"><span class="dot" style="background:${dot};flex-shrink:0;"></span>${label}</span>`;
+}
+
+function calcTenure(admissionISO){
+  if(!admissionISO) return '';
+  const d = daysBetween(admissionISO, todayISO());
+  if(d < 0) return '';
+  const anos  = Math.floor(d/365);
+  const meses = Math.floor((d%365)/30);
+  if(anos===0 && meses===0) return '< 1 mês';
+  if(anos===0) return `${meses}m`;
+  return `${anos}a ${meses>0?meses+'m':''}`;
+}
+
+function renderColaboradores(app){
+  const cols = state.colaboradores.map(migrateColab);
+  const total   = cols.length;
+  const expiring = cols.filter(c=>vacationStatus(c)==='expiring').length;
+  const expired  = cols.filter(c=>vacationStatus(c)==='expired').length;
+  const cargos   = [...new Set(cols.map(c=>c.role).filter(Boolean))].length;
+
+  let h='';
+  h+=`<div class="metrics" style="grid-template-columns:repeat(4,1fr);margin-bottom:1.5rem;">`;
+  h+=metric('Colaboradores',total,null);
+  h+=metric('Cargos',cargos,null);
+  h+=metric('Férias próx. vencimento',expiring, expiring>0?'var(--amber-dot)':null);
+  h+=metric('Período vencido',expired, expired>0?'var(--red-dot)':null);
+  h+=`</div>`;
+
+  h+=`<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap;">`;
+  h+=`<p style="font-size:12px;color:var(--text-tertiary);margin:0;flex:1;">
+    Alerta trabalhista CLT: <strong>Próximo de vencimento</strong> = ≤60 dias para encerrar o período concessivo.
+    <strong>Período vencido</strong> = risco de férias em dobro.
+  </p>`;
+  h+=`<div style="display:flex;gap:8px;align-items:center;">
+    <div style="position:relative;">
+      <i class="ti ti-search" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--text-tertiary);pointer-events:none;"></i>
+      <input id="colab-search" value="${esc(state.colabSearch)}" placeholder="Pesquisar por nome..."
+        oninput="state.colabSearch=this.value;renderColaboradores(document.getElementById('app'))"
+        style="height:34px;padding-left:30px;width:220px;font-size:13px;">
+    </div>
+    <input type="file" id="import-file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportFile(this)">
+    <button onclick="document.getElementById('import-file-input').click()" style="gap:6px;"><i class="ti ti-table-import"></i>Importar Excel</button>
+    <button class="primary" onclick="addColab()"><i class="ti ti-user-plus"></i>Novo colaborador</button>
+  </div>`;
+  h+=`</div>`;
+
+  // painel de importação (quando há dados carregados)
+  if(state.importData){
+    h += renderImportPanel();
+  }
+
+  const search = (state.colabSearch||'').toLowerCase().trim();
+  const filteredCols = search ? cols.filter(c=>(c.name||'').toLowerCase().includes(search)||(c.role||'').toLowerCase().includes(search)) : cols;
+
+  if(cols.length===0){
+    h+=`<div style="text-align:center;padding:4rem 2rem;color:var(--text-tertiary);">
+      <i class="ti ti-users" style="font-size:40px;display:block;margin-bottom:12px;"></i>
+      <p style="font-size:14px;">Nenhum colaborador cadastrado ainda.</p>
+    </div>`;
+    app.innerHTML=h; return;
+  }
+
+  if(filteredCols.length===0){
+    h+=`<div style="padding:2rem;text-align:center;color:var(--text-tertiary);font-size:13px;">
+      Nenhum colaborador encontrado para "<strong>${esc(state.colabSearch)}</strong>".
+    </div>`;
+    app.innerHTML=h; return;
+  }
+
+  h+=`<p style="font-size:12px;color:var(--text-tertiary);margin-bottom:8px;">${search?`${filteredCols.length} de ${cols.length} colaboradores`:''}</p>`;
+
+  h+=`<div class="tbl-wrap"><table><colgroup>
+    <col style="width:22%"><col style="width:16%"><col style="width:9%">
+    <col style="width:10%"><col style="width:10%"><col style="width:10%">
+    <col style="width:20%"><col style="width:34px">
+  </colgroup>
+  <thead><tr>
+    <th>Nome</th><th>Cargo</th><th>Admissão</th>
+    <th>Tempo</th><th>Últimas férias</th><th>Próximas férias</th>
+    <th>Status trabalhista</th><th></th>
+  </tr></thead><tbody>`;
+
+  filteredCols.forEach((c,i)=>{ const i_real=cols.indexOf(c);
+    const vStatus = vacationStatus(c);
+    const rowBg = vStatus==='expired'  ? 'background:var(--red-bg);'
+                : vStatus==='expiring' ? 'background:var(--amber-bg);'
+                : '';
+    h+=`<tr style="${rowBg}">
+      <td><input value="${esc(c.name)}" placeholder="Nome completo"
+        onchange="saveColabNoRender(${i_real},'name',this.value)"
+        style="border:none;background:transparent;font-weight:500;padding:0;height:28px;"></td>
+      <td><input value="${esc(c.role)}" placeholder="Cargo"
+        onchange="saveColabNoRender(${i_real},'role',this.value)"
+        style="border:none;background:transparent;padding:0;height:28px;"></td>
+      <td><input type="date" value="${c.admission||''}"
+        onchange="saveColabRender(${i_real},'admission',this.value||null)"
+        style="height:28px;font-size:12px;padding:0 4px;"></td>
+      <td style="color:var(--text-secondary);font-size:12px;">${c.admission?calcTenure(c.admission):'—'}</td>
+      <td><input type="date" value="${c.lastVacation||''}"
+        onchange="saveColabRender(${i_real},'lastVacation',this.value||null)"
+        style="height:28px;font-size:12px;padding:0 4px;"></td>
+      <td><input type="date" value="${c.nextVacation||''}"
+        onchange="saveColabRender(${i_real},'nextVacation',this.value||null)"
+        style="height:28px;font-size:12px;padding:0 4px;"></td>
+      <td>${vacationBadgeHtml(c)}</td>
+      <td style="padding:6px 8px;">
+        <button onclick="removeColab(${i_real})" title="Remover"
+          style="height:28px;width:28px;padding:0;border:none;background:transparent;color:var(--text-tertiary);">
+          <i class="ti ti-trash" style="font-size:14px;"></i>
+        </button>
+      </td>
+    </tr>`;
+  });
+
+  h+=`</tbody></table></div>`;
+  app.innerHTML=h;
+}
+
+function addColab(){
+  state.colaboradores.push(makeColab());
+  save(); render();
+}
+function saveColabNoRender(i,key,val){
+  state.colaboradores[i][key]=val; save();
+}
+function saveColabRender(i,key,val){
+  state.colaboradores[i][key]=val; save(); render();
+}
+function saveColab(i,key,val){ saveColabRender(i,key,val); }
+function removeColab(i){
+  if(!confirm('Remover este colaborador?')) return;
+  state.colaboradores.splice(i,1);
+  save(); render();
+}
+
+
+// ─── EMPREITEIROS ────────────────────────────────────────────────────────────
+function makeEmpr(){
+  return { id:uid(), name:'', contact:'', city:'', email:'', phone:'' };
+}
+
+function renderEmpreiteiros(app){
+  const emps = state.empreiteiros;
+  const cidades = [...new Set(emps.map(e=>e.city).filter(Boolean))].length;
+
+  let h='';
+  h+=`<div class="metrics" style="grid-template-columns:repeat(3,1fr);max-width:500px;margin-bottom:1.5rem;">`;
+  h+=metric('Empreiteiros',emps.length,null);
+  h+=metric('Cidades',cidades,null);
+  h+=metric('Com contato',emps.filter(e=>e.email||e.phone).length,null);
+  h+=`</div>`;
+
+  h+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">`;
+  h+=`<p style="font-size:12px;color:var(--text-tertiary);margin:0;">Edite os campos diretamente na tabela. Alterações salvas automaticamente.</p>`;
+  h+=`<button class="primary" onclick="addEmpr()"><i class="ti ti-building-factory-2"></i>Novo empreiteiro</button>`;
+  h+=`</div>`;
+
+  if(emps.length===0){
+    h+=`<div style="text-align:center;padding:4rem 2rem;color:var(--text-tertiary);">
+      <i class="ti ti-building-factory-2" style="font-size:40px;display:block;margin-bottom:12px;"></i>
+      <p style="font-size:14px;">Nenhum empreiteiro cadastrado ainda.</p>
+    </div>`;
+    app.innerHTML=h; return;
+  }
+
+  h+=`<div class="tbl-wrap"><table><colgroup>
+    <col style="width:20%"><col style="width:18%"><col style="width:14%">
+    <col style="width:20%"><col style="width:18%"><col style="width:34px">
+  </colgroup>
+  <thead><tr>
+    <th>Empreiteiro</th><th>Responsável</th><th>Cidade</th>
+    <th>E-mail</th><th>Telefone</th><th></th>
+  </tr></thead><tbody>`;
+
+  emps.forEach((e,i)=>{
+    h+=`<tr style="border-bottom:1px solid var(--border);">
+      <td><input value="${esc(e.name)}" placeholder="Nome da empresa"
+        onchange="saveEmprNoRender(${i},'name',this.value)"
+        style="border:none;background:transparent;font-weight:500;padding:0;height:28px;width:100%;"></td>
+      <td><input value="${esc(e.contact)}" placeholder="Nome do responsável"
+        onchange="saveEmprNoRender(${i},'contact',this.value)"
+        style="border:none;background:transparent;padding:0;height:28px;width:100%;"></td>
+      <td><input value="${esc(e.city)}" placeholder="Cidade"
+        onchange="saveEmprNoRender(${i},'city',this.value)"
+        style="border:none;background:transparent;padding:0;height:28px;width:100%;"></td>
+      <td><input type="email" value="${esc(e.email)}" placeholder="email@empresa.com.br"
+        onchange="saveEmprNoRender(${i},'email',this.value)"
+        style="border:none;background:transparent;padding:0;height:28px;width:100%;font-size:12px;"></td>
+      <td><input value="${esc(e.phone)}" placeholder="(11) 9xxxx-xxxx"
+        onchange="saveEmprNoRender(${i},'phone',this.value)"
+        style="border:none;background:transparent;padding:0;height:28px;width:100%;font-size:12px;"></td>
+      <td style="padding:6px 8px;">
+        <button onclick="removeEmpr(${i})" title="Remover"
+          style="height:28px;width:28px;padding:0;border:none;background:transparent;color:var(--text-tertiary);">
+          <i class="ti ti-trash" style="font-size:14px;"></i>
+        </button>
+      </td>
+    </tr>`;
+  });
+
+  h+=`</tbody></table></div>`;
+  app.innerHTML=h;
+}
+
+function addEmpr(){
+  state.empreiteiros.push(makeEmpr());
+  save(); render();
+}
+function saveEmprNoRender(i,key,val){
+  state.empreiteiros[i][key]=val; save();
+}
+function removeEmpr(i){
+  if(!confirm('Remover este empreiteiro?')) return;
+  state.empreiteiros.splice(i,1);
+  save(); render();
+}
+
+
+// ─── VISÃO POR PROJETO ───────────────────────────────────────────────────────
+function renderVisaoColab(app){
+  const today = todayISO();
+  const allProjects = state.projects.filter(p=>!p.completed);
+
+  // métricas gerais
+  const totalComEquipe = allProjects.filter(p=>{
+    const temAlocacao = (p.allocations||[]).length > 0;
+    const temCoord = p.coordinator && state.colaboradores.find(c=>c.name===p.coordinator);
+    return temAlocacao || temCoord;
+  }).length;
+  const totalSemEquipe = allProjects.length - totalComEquipe;
+
+  // total de colaboradores únicos alocados em pelo menos 1 projeto ativo
+  const colabsAtivos = new Set();
+  allProjects.forEach(p=>{
+    (p.allocations||[]).forEach(a=>{ if(a.colabId) colabsAtivos.add(a.colabId); });
+    if(p.coordinator){
+      const c = state.colaboradores.find(c=>c.name===p.coordinator);
+      if(c) colabsAtivos.add(c.id);
+    }
+  });
+
+  let h='';
+  h+=`<div class="metrics" style="grid-template-columns:repeat(4,1fr);margin-bottom:1.5rem;">`;
+  h+=metric('Projetos ativos', allProjects.length, null);
+  h+=metric('Com equipe definida', totalComEquipe, null);
+  h+=metric('Sem equipe', totalSemEquipe, totalSemEquipe>0?'var(--amber-dot)':null);
+  h+=metric('Colaboradores alocados', colabsAtivos.size, 'var(--brand-teal)');
+  h+=`</div>`;
+
+  h+=`<p style="font-size:12px;color:var(--text-tertiary);margin-bottom:1rem;">
+    Inclui alocações formais + papel de coordenador. Clique num projeto para abrir seus detalhes.
+  </p>`;
+
+  h+=`<div style="display:flex;flex-direction:column;gap:10px;">`;
+
+  allProjects.forEach(proj=>{
+    const f  = farol(proj);
+    const fc = farolStyle(f);
+    const { current } = phaseStatus(proj);
+
+    // montar lista de pessoas deste projeto (coordenador + alocados)
+    const pessoas = [];
+
+    // coordenador primeiro
+    if(proj.coordinator){
+      const colab = state.colaboradores.find(c=>c.name===proj.coordinator);
+      pessoas.push({
+        name:   proj.coordinator,
+        role:   colab ? (colab.role||'—') : '—',
+        fnProj: 'Coordenador',
+        start:  null, end: null,
+        source: 'coordenador',
+        id:     colab ? colab.id : null
+      });
+    }
+
+    // alocações formais
+    (proj.allocations||[]).forEach(a=>{
+      const colab = state.colaboradores.find(c=>c.id===a.colabId);
+      // evitar duplicata se coordenador também estiver alocado formalmente
+      if(colab && pessoas.find(p=>p.id===colab.id)) return;
+      pessoas.push({
+        name:   colab ? colab.name : '(colaborador removido)',
+        role:   colab ? (colab.role||'—') : '—',
+        fnProj: a.roleInProject||'—',
+        start:  a.start, end: a.end,
+        source: 'alocacao',
+        id:     colab ? colab.id : null
+      });
+    });
+
+    const n = pessoas.length;
+    const corBorda = n===0 ? 'var(--border)' : 'var(--brand-teal)';
+
+    h+=`<div class="card" style="border-top:3px solid ${corBorda};">`;
+
+    // cabeçalho do projeto
+    h+=`<div style="display:flex;align-items:center;gap:14px;padding:12px 16px;cursor:pointer;${n>0?'border-bottom:1px solid var(--border);':''}"
+         onclick="goTab('portfolio');state.view='detail';state.currentId='${proj.id}';render()"
+         onmouseover="this.style.background='var(--bg-secondary)'"
+         onmouseout="this.style.background='transparent'">`;
+
+    // badge contador de pessoas
+    h+=`<div style="width:42px;height:42px;border-radius:50%;background:${n===0?`var(--bg-secondary)`:`var(--brand-teal-light)`};
+         display:flex;align-items:center;justify-content:center;flex-shrink:0;flex-direction:column;gap:0;">
+      <span style="font-size:16px;font-weight:700;color:${n===0?'var(--text-tertiary)':'var(--brand-navy)'};line-height:1;">${n}</span>
+      <span style="font-size:9px;color:var(--text-tertiary);line-height:1;">pessoa${n!==1?'s':''}</span>
+    </div>`;
+
+    h+=`<div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+        <span style="font-weight:700;font-size:15px;color:var(--brand-navy);">${esc(proj.name)}</span>
+        <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-tertiary);">${esc(proj.code)}</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:3px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--text-secondary);">${esc(current.name)}</span>
+        ${proj.estimatedDelivery?`<span style="font-size:11px;color:var(--text-tertiary);">Entrega: ${fmtDate(proj.estimatedDelivery)}</span>`:''}
+      </div>
+    </div>`;
+
+    h+=`<span class="badge" style="background:${fc.bg};color:${fc.text};flex-shrink:0;">
+      <span class="dot" style="background:${fc.dot};"></span>${farolLabel(f)}
+    </span>`;
+
+    h+=`<i class="ti ti-chevron-right" style="color:var(--text-tertiary);flex-shrink:0;"></i>`;
+    h+=`</div>`; // fim cabeçalho
+
+    if(n===0){
+      h+=`<div style="padding:10px 16px;font-size:12px;color:var(--text-tertiary);">
+        <i class="ti ti-alert-circle" style="vertical-align:-2px;margin-right:4px;"></i>
+        Nenhum colaborador alocado neste projeto ainda.
+      </div>`;
+    } else {
+      // tabela de pessoas
+      h+=`<div style="overflow-x:auto;">`;
+      h+=`<table style="width:100%;border-collapse:collapse;font-size:13px;"><colgroup>
+        <col style="width:24px"><col style="width:22%"><col style="width:18%"><col style="width:20%"><col style="width:14%"><col style="width:14%">
+      </colgroup>
+      <thead><tr style="background:var(--bg-secondary);">
+        <th style="padding:6px 10px;"></th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Nome</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Cargo</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Função no projeto</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Início</th>
+        <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;">Fim previsto</th>
+      </tr></thead><tbody>`;
+
+      pessoas.forEach((p, idx)=>{
+        const isLast = idx === pessoas.length-1;
+        const isCoord = p.source==='coordenador';
+
+        // status temporal da alocação
+        let statusDot = '';
+        if(p.start && p.end){
+          if(today < p.start)      statusDot = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--text-tertiary);margin-right:5px;" title="Futuro"></span>`;
+          else if(today <= p.end)  statusDot = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green-dot);margin-right:5px;" title="Em campo"></span>`;
+          else                     statusDot = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--border);margin-right:5px;" title="Encerrado"></span>`;
+        } else if(isCoord){
+          statusDot = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--brand-teal);margin-right:5px;" title="Coordenador"></span>`;
+        }
+
+        h+=`<tr style="${isLast?'':'border-bottom:1px solid var(--border);'}${isCoord?'background:var(--brand-teal-light);':''}">
+          <td style="padding:8px 10px;text-align:center;">
+            ${isCoord
+              ? `<i class="ti ti-star-filled" style="font-size:12px;color:var(--brand-teal);" title="Coordenador"></i>`
+              : `<i class="ti ti-hammer" style="font-size:12px;color:var(--text-tertiary);" title="Alocação formal"></i>`}
+          </td>
+          <td style="padding:8px 10px;font-weight:${isCoord?'600':'400'};color:var(--brand-navy);">${statusDot}${esc(p.name)}</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">${esc(p.role)}</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);">${esc(p.fnProj)}</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">${p.start?fmtDate(p.start):'—'}</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-size:12px;">${p.end?fmtDate(p.end):'—'}</td>
+        </tr>`;
+      });
+
+      h+=`</tbody></table></div>`;
+    }
+
+    h+=`</div>`; // fecha card
+  });
+
+  h+=`</div>`;
+
+  // ── Colaboradores sem alocação ────────────────────────────────────────────
+  // Monta o set de IDs alocados em projetos ativos (alocação formal + coordenador)
+  const idAlocados = new Set();
+  allProjects.forEach(proj=>{
+    (proj.allocations||[]).forEach(a=>{ if(a.colabId) idAlocados.add(a.colabId); });
+    if(proj.coordinator){
+      const cb = state.colaboradores.find(c=>c.name===proj.coordinator);
+      if(cb) idAlocados.add(cb.id);
+    }
+  });
+
+  const livres = state.colaboradores.filter(c=>!idAlocados.has(c.id));
+
+  if(state.colaboradores.length > 0){
+    h+=`<div style="margin-top:2rem;">`;
+    h+=`<h2 style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+      <i class="ti ti-user-off" style="font-size:16px;color:${livres.length>0?'var(--amber-dot)':'var(--green-dot)'};"></i>
+      Colaboradores sem alocação ativa
+      <span style="background:${livres.length>0?'var(--amber-bg)':'var(--green-bg)'};
+        color:${livres.length>0?'var(--amber-text)':'var(--green-text)'};
+        font-size:12px;font-weight:700;padding:2px 10px;border-radius:999px;">${livres.length}</span>
+    </h2>`;
+
+    if(livres.length===0){
+      h+=`<div class="card" style="padding:16px;display:flex;align-items:center;gap:10px;color:var(--green-text);background:var(--green-bg);border:1px solid var(--green-dot);">
+        <i class="ti ti-circle-check" style="font-size:20px;flex-shrink:0;"></i>
+        <span style="font-size:13px;font-weight:500;">Todos os colaboradores estão alocados em pelo menos um projeto ativo.</span>
+      </div>`;
+    } else {
+      h+=`<div class="tbl-wrap"><table><colgroup>
+        <col style="width:28%"><col style="width:22%"><col style="width:15%"><col style="width:15%"><col style="width:20%">
+      </colgroup>
+      <thead><tr>
+        <th>Nome</th><th>Cargo</th><th>Admissão</th><th>Tempo de empresa</th><th>Status férias</th>
+      </tr></thead><tbody>`;
+
+      livres.forEach(cb=>{
+        const vb = vacationBadgeHtml(cb);
+        h+=`<tr>
+          <td style="font-weight:500;color:var(--brand-navy);">${esc(cb.name)}</td>
+          <td style="color:var(--text-secondary);">${esc(cb.role||'—')}</td>
+          <td style="color:var(--text-secondary);font-size:12px;">${cb.admission?fmtDate(cb.admission):'—'}</td>
+          <td style="color:var(--text-secondary);font-size:12px;">${cb.admission?calcTenure(cb.admission):'—'}</td>
+          <td>${vb}</td>
+        </tr>`;
+      });
+
+      h+=`</tbody></table></div>`;
+    }
+    h+=`</div>`;
+  }
+
+  app.innerHTML = h;
+}
+
+// ─── ALOCAÇÃO DE COLABORADORES ───────────────────────────────────────────────
+function renderAllocations(p){
+  const cols = state.colaboradores;
+  const allocs = p.allocations || [];
+
+  // ids já alocados para evitar duplicata no select
+  const allocatedIds = new Set(allocs.map(a=>a.colabId));
+
+  // montar opções do select (todos os colaboradores)
+  const opts = cols.map(c=>`<option value="${c.id}">${esc(c.name)}${c.role?' — '+esc(c.role):''}</option>`).join('');
+
+  let h = '<div class="card" style="margin-bottom:2rem;">';
+
+  if(allocs.length === 0){
+    h += `<div style="padding:14px;color:var(--text-tertiary);font-size:13px;">Nenhum colaborador alocado ainda.</div>`;
+  } else {
+    h += `<table><colgroup>
+      <col style="width:22%"><col style="width:18%"><col style="width:20%">
+      <col style="width:13%"><col style="width:13%"><col style="width:10%"><col style="width:34px">
+    </colgroup>
+    <thead><tr style="background:var(--bg-secondary);">
+      <th>Colaborador</th><th>Cargo</th><th>Função no projeto</th>
+      <th>Início</th><th>Fim previsto</th><th>Status</th><th></th>
+    </tr></thead><tbody>`;
+
+    allocs.forEach((a,i)=>{
+      const colab = cols.find(c=>c.id===a.colabId);
+      const name  = colab ? colab.name : '(colaborador removido)';
+      const cargo = colab ? (colab.role||'—') : '—';
+
+      // status de alocação
+      let statusHtml = '';
+      if(a.start && a.end){
+        const today = todayISO();
+        if(today < a.start)       statusHtml = `<span class="badge" style="background:var(--gray-bg);color:var(--gray-text);"><span class="dot" style="background:var(--gray-dot);"></span>Futuro</span>`;
+        else if(today <= a.end)   statusHtml = `<span class="badge" style="background:var(--green-bg);color:var(--green-text);"><span class="dot" style="background:var(--green-dot);"></span>Em campo</span>`;
+        else                      statusHtml = `<span class="badge" style="background:var(--bg-secondary);color:var(--text-secondary);"><span class="dot" style="background:var(--text-tertiary);"></span>Encerrado</span>`;
+      }
+
+      h += `<tr style="border-bottom:1px solid var(--border);">
+        <td style="font-weight:500;">${esc(name)}</td>
+        <td style="color:var(--text-secondary);font-size:12px;">${esc(cargo)}</td>
+        <td><input value="${esc(a.roleInProject||'')}" placeholder="Ex: Supervisor de instalação"
+          onchange="saveAlloc('${p.id}',${i},'roleInProject',this.value)"
+          style="border:none;background:transparent;padding:0;height:28px;width:100%;"></td>
+        <td><input type="date" value="${a.start||''}"
+          onchange="saveAllocPartial('${p.id}',${i},'start',this.value||null)"
+          style="height:28px;font-size:12px;padding:0 4px;"></td>
+        <td><input type="date" value="${a.end||''}"
+          onchange="saveAllocPartial('${p.id}',${i},'end',this.value||null)"
+          style="height:28px;font-size:12px;padding:0 4px;"></td>
+        <td>${statusHtml}</td>
+        <td style="padding:6px 8px;">
+          <button onclick="removeAlloc('${p.id}',${i})" title="Remover alocação"
+            style="height:28px;width:28px;padding:0;border:none;background:transparent;color:var(--text-tertiary);">
+            <i class="ti ti-trash" style="font-size:14px;"></i>
+          </button>
+        </td>
+      </tr>`;
+    });
+    h += '</tbody></table>';
+  }
+
+  // rodapé: adicionar colaborador
+  if(cols.length === 0){
+    h += `<div style="padding:10px 14px;border-top:1px solid var(--border);background:var(--bg-secondary);">
+      <p style="font-size:12px;color:var(--text-tertiary);margin:0;">
+        Cadastre colaboradores na aba <strong>Colaboradores Autobras</strong> para poder alocar aqui.
+      </p>
+    </div>`;
+  } else {
+    h += `<div style="padding:10px 14px;border-top:1px solid var(--border);background:var(--bg-secondary);display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <select id="alloc-select" style="flex:1;min-width:200px;height:34px;">
+        <option value="">Selecionar colaborador...</option>
+        ${opts}
+      </select>
+      <button onclick="addAlloc('${p.id}')" class="primary">
+        <i class="ti ti-plus"></i>Alocar colaborador
+      </button>
+    </div>`;
+  }
+
+  h += '</div>';
+  return h;
+}
+
+function addAlloc(projectId){
+  const sel = document.getElementById('alloc-select');
+  if(!sel || !sel.value) return;
+  const p = state.projects.find(x=>x.id===projectId);
+  if(!p) return;
+  // evitar duplicata
+  if(p.allocations.find(a=>a.colabId===sel.value)){
+    alert('Este colaborador já está alocado neste projeto.');
+    return;
+  }
+  p.allocations.push({ colabId:sel.value, roleInProject:'', start:null, end:null });
+  save(); render();
+}
+
+function saveAlloc(projectId, idx, key, val){
+  const p = state.projects.find(x=>x.id===projectId);
+  if(!p) return;
+  p.allocations[idx][key] = val;
+  save();
+}
+
+function saveAllocPartial(projectId, idx, key, val){
+  // salva sem re-renderizar a página inteira (evita interferir na curva S)
+  const p = state.projects.find(x=>x.id===projectId);
+  if(!p) return;
+  p.allocations[idx][key] = val;
+  save();
+  // re-renderiza apenas a seção de alocação, sem tocar no canvas do gráfico
+  const div = document.getElementById('alloc-section');
+  if(div) div.innerHTML = renderAllocations(p);
+}
+
+function removeAlloc(projectId, idx){
+  const p = state.projects.find(x=>x.id===projectId);
+  if(!p) return;
+  p.allocations.splice(idx,1);
+  save(); render();
+}
+
+
+// ─── IMPORTAÇÃO DE COLABORADORES (EXCEL/CSV) ─────────────────────────────────
+
+// Mapeamento automático por nome de coluna (normalizado)
+const AUTO_MAP = {
+  name:         ['nome','nome completo','nome_completo','colaborador','funcionário','funcionario','employee','name'],
+  role:         ['cargo','função','funcao','posição','posicao','role','position','função/cargo'],
+  admission:    ['admissão','admissao','data admissão','data_admissao','data de admissão','contratação','contratacao','hire date','admission'],
+  lastVacation: ['últimas férias','ultimas ferias','última férias','ultima ferias','férias gozadas','last vacation','last_vacation'],
+  nextVacation: ['próximas férias','proximas ferias','próx férias','prox ferias','férias previstas','next vacation','next_vacation'],
+  notes:        ['observações','observacoes','notas','obs','notes','comments'],
+};
+
+function normalizeHeader(h){
+  return (h||'').toString().toLowerCase().trim()
+    .normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/[^a-z0-9\s_\/]/g,'').replace(/\s+/g,' ').trim();
+}
+
+function autoDetectMap(headers){
+  const map = {name:'',role:'',admission:'',lastVacation:'',nextVacation:'',notes:''};
+  headers.forEach(h=>{
+    const norm = normalizeHeader(h);
+    Object.entries(AUTO_MAP).forEach(([field, synonyms])=>{
+      if(!map[field] && synonyms.includes(norm)) map[field] = h;
+    });
+  });
+  return map;
+}
+
+function parseExcelDate(val){
+  if(!val) return null;
+  // número serial do Excel
+  if(typeof val === 'number'){
+    const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+    return d.toISOString().slice(0,10);
+  }
+  // string: tentar formatos comuns
+  const s = val.toString().trim();
+  // dd/mm/yyyy
+  const br = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(br) return `${br[3]}-${br[2].padStart(2,'0')}-${br[1].padStart(2,'0')}`;
+  // yyyy-mm-dd
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(iso) return iso[0];
+  return null;
+}
+
+function handleImportFile(input){
+  const file = input.files[0];
+  if(!file){ state.importData=null; render(); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array', cellDates:false});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+      if(rows.length < 2){ alert('Arquivo vazio ou sem dados.'); return; }
+      const headers = rows[0].map(h=>h.toString());
+      const data    = rows.slice(1).filter(r=>r.some(v=>v!==''&&v!==null&&v!==undefined));
+      state.importData = { headers, data, filename: file.name };
+      state.importMap  = autoDetectMap(headers);
+      render();
+    } catch(err){
+      alert('Erro ao ler arquivo: '+err.message);
+    }
+    input.value=''; // reset para permitir re-upload do mesmo arquivo
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderImportPanel(){
+  if(!state.importData) return '';
+  const { headers, data, filename } = state.importData;
+  const map = state.importMap;
+  const fields = [
+    { key:'name',         label:'Nome *',           required:true },
+    { key:'role',         label:'Cargo' },
+    { key:'admission',    label:'Data de admissão' },
+    { key:'lastVacation', label:'Últimas férias' },
+    { key:'nextVacation', label:'Próximas férias' },
+    { key:'notes',        label:'Observações' },
+  ];
+  const opts = ['', ...headers].map(h=>`<option value="${esc(h)}" ${map[fields.find(f=>f.key==='name')&&''] === h ? 'selected':''}>${esc(h)||'— não importar —'}</option>`);
+
+  const makeSelect = (fieldKey) => {
+    const cur = map[fieldKey]||'';
+    return `<select onchange="state.importMap['${fieldKey}']=this.value;document.getElementById('import-preview-body').innerHTML=buildPreviewRows()" style="height:32px;font-size:12px;">
+      ${['', ...headers].map(h=>`<option value="${esc(h)}" ${cur===h?'selected':''}>${esc(h)||'— não importar —'}</option>`).join('')}
+    </select>`;
+  };
+
+  // preview: primeiras 5 linhas mapeadas
+  const previewRows = buildPreviewRowsFromData(data.slice(0,5), headers, map);
+
+  let h = `<div class="import-panel">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+      <div>
+        <h3><i class="ti ti-table-import" style="color:var(--brand-teal);margin-right:6px;"></i>Importar colaboradores</h3>
+        <p style="margin-bottom:0;">Arquivo: <strong>${esc(filename)}</strong> — ${data.length} linha${data.length!==1?'s':''} encontrada${data.length!==1?'s':''}. Mapeie as colunas do seu Excel para os campos do sistema.</p>
+      </div>
+      <button onclick="state.importData=null;state.importMap={};render()" style="flex-shrink:0;"><i class="ti ti-x"></i>Cancelar</button>
+    </div>`;
+
+  h+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;">`;
+  fields.forEach(f=>{
+    h+=`<div><label style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:4px;">${f.label}</label>${makeSelect(f.key)}</div>`;
+  });
+  h+=`</div>`;
+
+  h+=`<p style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;">Pré-visualização (primeiras 5 linhas):</p>`;
+  h+=`<div class="import-preview"><table>
+    <thead><tr>
+      <th>Nome</th><th>Cargo</th><th>Admissão</th><th>Últ. férias</th><th>Próx. férias</th><th>Obs.</th>
+    </tr></thead>
+    <tbody id="import-preview-body">${previewRows}</tbody>
+  </table></div>`;
+
+  h+=`<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px;align-items:center;">
+    <span style="font-size:12px;color:var(--text-secondary);">
+      <i class="ti ti-info-circle" style="vertical-align:-2px;"></i>
+      Colaboradores existentes não serão removidos — apenas adicionados.
+    </span>
+    <button onclick="executeImport()" class="primary" style="gap:6px;">
+      <i class="ti ti-check"></i>Importar ${data.length} colaborador${data.length!==1?'es':''}
+    </button>
+  </div>`;
+
+  h+=`</div>`;
+  return h;
+}
+
+function buildPreviewRows(){
+  if(!state.importData) return '';
+  return buildPreviewRowsFromData(state.importData.data.slice(0,5), state.importData.headers, state.importMap);
+}
+
+function buildPreviewRowsFromData(rows, headers, map){
+  const idx = k => map[k] ? headers.indexOf(map[k]) : -1;
+  return rows.map(row=>{
+    const get = k => { const i=idx(k); return i>=0 ? esc(row[i]||'') : '<span style="color:var(--text-tertiary)">—</span>'; };
+    const getDate = k => { const i=idx(k); if(i<0) return '<span style="color:var(--text-tertiary)">—</span>'; const d=parseExcelDate(row[i]); return d?fmtDate(d):'<span style="color:var(--text-tertiary)">—</span>'; };
+    return `<tr>
+      <td>${get('name')}</td><td>${get('role')}</td>
+      <td>${getDate('admission')}</td><td>${getDate('lastVacation')}</td>
+      <td>${getDate('nextVacation')}</td><td>${get('notes')}</td>
+    </tr>`;
+  }).join('');
+}
+
+function executeImport(){
+  if(!state.importData) return;
+  const { headers, data } = state.importData;
+  const map = state.importMap;
+  if(!map.name){ alert('O campo "Nome" é obrigatório. Selecione a coluna correspondente.'); return; }
+  const idx = k => map[k] ? headers.indexOf(map[k]) : -1;
+
+  let added = 0, skipped = 0;
+  data.forEach(row=>{
+    const nameIdx = idx('name');
+    const name = nameIdx>=0 ? (row[nameIdx]||'').toString().trim() : '';
+    if(!name){ skipped++; return; }
+    // evitar duplicata pelo nome exato
+    if(state.colaboradores.find(c=>c.name.trim().toLowerCase()===name.toLowerCase())){
+      skipped++; return;
+    }
+    const getDate = k => { const i=idx(k); if(i<0) return null; return parseExcelDate(row[i]); };
+    const getStr  = k => { const i=idx(k); if(i<0) return ''; return (row[i]||'').toString().trim(); };
+    state.colaboradores.push({
+      id: uid(), name,
+      role:         getStr('role'),
+      admission:    getDate('admission'),
+      lastVacation: getDate('lastVacation'),
+      nextVacation: getDate('nextVacation'),
+      notes:        getStr('notes'),
+    });
+    added++;
+  });
+
+  state.importData = null; state.importMap = {};
+  save();
+  render();
+  setTimeout(()=>alert(`Importação concluída!\n✓ ${added} colaborador${added!==1?'es':''} adicionado${added!==1?'s':''}${skipped>0?`\n⚠ ${skipped} linha${skipped!==1?'s':''} ignorada${skipped!==1?'s':''} (duplicatas ou nome vazio)`:''}.`),100);
+}
+
+// ─── init ────────────────────────────────────────────────────────────────────
+load();
+</script>
+
+
+</body></html>
