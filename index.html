@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.29.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 :root{
   /* Autobras brand */
@@ -1008,9 +1009,58 @@ const SEED = [
   {name:"HB50",           builder:"-",     coordinator:"Diogo",   delivery:null},
   {name:"Unimed Jundiaí", builder:"-",     coordinator:"Messias", delivery:null}
 ];
-const STORAGE_KEY      = 'autobras-portfolio-v2';
-const STORAGE_COLAB    = 'autobras-colaboradores-v1';
-const STORAGE_EMPR     = 'autobras-empreiteiros-v1';
+// ─── Supabase config ─────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://uglxwpaiypcvijdkcltj.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnbHh3cGFpeXBjdmlqZGtjbHRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwNjY0MTMsImV4cCI6MjEwNDY0MjQxM30.STbGOI2SIrRlD_APZhGh69-ABg5Upd_yWm66BEb99aY';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ─── DB helpers ──────────────────────────────────────────────────────────────
+function projectToDB(p, idx) {
+  return {
+    id: p.id, code: p.code, name: p.name, builder: p.builder,
+    coordinator: p.coordinator, nis: p.nis,
+    estimated_delivery: p.estimatedDelivery || null,
+    manual_farol: p.manualFarol || null,
+    phases: p.phases, comments: p.comments, allocations: p.allocations,
+    completed: p.completed, completed_at: p.completedAt || null,
+    contract_value: p.contractValue ?? null,
+    invoiced_pct: p.invoicedPct ?? null,
+    sort_order: idx,
+    updated_at: new Date().toISOString()
+  };
+}
+function projectFromDB(r) {
+  return migrate({
+    id: r.id, code: r.code, name: r.name, builder: r.builder || '',
+    coordinator: r.coordinator || '', nis: r.nis || '',
+    estimatedDelivery: r.estimated_delivery || null,
+    manualFarol: r.manual_farol || null,
+    phases: r.phases || [], comments: r.comments || [],
+    allocations: r.allocations || [],
+    completed: r.completed || false, completedAt: r.completed_at || null,
+    contractValue: r.contract_value ?? null,
+    invoicedPct: r.invoiced_pct ?? null
+  }, 0);
+}
+function colabToDB(c) {
+  return {
+    id: c.id, name: c.name, role: c.role || '',
+    admission: c.admission || null,
+    last_vacation: c.lastVacation || null,
+    next_vacation: c.nextVacation || null,
+    notes: c.notes || '',
+    updated_at: new Date().toISOString()
+  };
+}
+function colabFromDB(r) {
+  return migrateColab({
+    id: r.id, name: r.name, role: r.role || '',
+    admission: r.admission || null,
+    lastVacation: r.last_vacation || null,
+    nextVacation: r.next_vacation || null,
+    notes: r.notes || ''
+  });
+}
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 const uid = () => 'p_' + Math.random().toString(36).slice(2,10);
@@ -1079,25 +1129,43 @@ function migrate(p, idx){
 // ─── estado ──────────────────────────────────────────────────────────────────
 let state = { projects:[], colaboradores:[], empreiteiros:[], view:'summary', currentId:null, dragIdx:null, tab:'portfolio', showHistory:false, colabSearch:'', importData:null, importMap:{} };
 
-function load(){
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    state.projects = raw ? JSON.parse(raw).map(migrate) : SEED.map(makeProject);
-  } catch(e){ state.projects = SEED.map(makeProject); }
-  try {
-    const rc = localStorage.getItem(STORAGE_COLAB);
-    state.colaboradores = rc ? JSON.parse(rc).map(migrateColab) : [];
-  } catch(e){ state.colaboradores = []; }
-  try {
-    const re = localStorage.getItem(STORAGE_EMPR);
-    state.empreiteiros = re ? JSON.parse(re) : [];
-  } catch(e){ state.empreiteiros = []; }
-  save(); render();
+// ─── save debounce ───────────────────────────────────────────────────────────
+let _saveTimer = null;
+function save() {
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(flushSave, 800);
 }
-function save(){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.projects));
-  localStorage.setItem(STORAGE_COLAB, JSON.stringify(state.colaboradores));
-  localStorage.setItem(STORAGE_EMPR, JSON.stringify(state.empreiteiros));
+async function flushSave() {
+  try {
+    const projects = state.projects.map((p, i) => projectToDB(p, i));
+    const colabs   = state.colaboradores.map(colabToDB);
+    const emprs    = state.empreiteiros.map(e => ({ ...e, updated_at: new Date().toISOString() }));
+    await Promise.all([
+      db.from('projects').upsert(projects),
+      db.from('colaboradores').upsert(colabs),
+      db.from('empreiteiros').upsert(emprs)
+    ]);
+  } catch(e) { console.error('Supabase save error:', e); }
+}
+
+async function load() {
+  try {
+    const [{ data: proj }, { data: colab }, { data: empr }] = await Promise.all([
+      db.from('projects').select('*').order('sort_order'),
+      db.from('colaboradores').select('*'),
+      db.from('empreiteiros').select('*')
+    ]);
+    state.projects      = (proj && proj.length)  ? proj.map(projectFromDB)   : SEED.map(makeProject);
+    state.colaboradores = (colab && colab.length) ? colab.map(colabFromDB)   : [];
+    state.empreiteiros  = (empr && empr.length)   ? empr                     : [];
+    if (!proj || proj.length === 0) await flushSave(); // seed inicial
+  } catch(e) {
+    console.error('Supabase load error:', e);
+    state.projects      = SEED.map(makeProject);
+    state.colaboradores = [];
+    state.empreiteiros  = [];
+  }
+  render();
 }
 const cur = () => state.projects.find(p=>p.id===state.currentId);
 
