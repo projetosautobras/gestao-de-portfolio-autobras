@@ -1677,10 +1677,11 @@ function resolveComment(idx){
   p.comments[idx].tag='resolved';
   save(); render();
 }
-function deleteComment(idx){
+async function deleteComment(idx){
   const p=cur(); if(!p) return;
   p.comments.splice(idx,1);
-  save(); render();
+  render();
+  await flushSave();
 }
 
 // ─── curva S ─────────────────────────────────────────────────────────────────
@@ -1977,10 +1978,12 @@ function saveColabRender(i,key,val){
   state.colaboradores[i][key]=val; save(); render();
 }
 function saveColab(i,key,val){ saveColabRender(i,key,val); }
-function removeColab(i){
+async function removeColab(i){
   if(!confirm('Remover este colaborador?')) return;
+  const id = state.colaboradores[i].id;
   state.colaboradores.splice(i,1);
-  save(); render();
+  render();
+  try { await db.from('colaboradores').delete().eq('id', id); } catch(e){ console.error('Delete colab error:', e); }
 }
 
 
@@ -2059,10 +2062,12 @@ function addEmpr(){
 function saveEmprNoRender(i,key,val){
   state.empreiteiros[i][key]=val; save();
 }
-function removeEmpr(i){
+async function removeEmpr(i){
   if(!confirm('Remover este empreiteiro?')) return;
+  const id = state.empreiteiros[i].id;
   state.empreiteiros.splice(i,1);
-  save(); render();
+  render();
+  try { await db.from('empreiteiros').delete().eq('id', id); } catch(e){ console.error('Delete empr error:', e); }
 }
 
 
